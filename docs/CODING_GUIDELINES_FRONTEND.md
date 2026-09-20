@@ -1,7 +1,10 @@
 # Keystone — Frontend Coding Guidelines (Flutter)
 
-Enterprise-grade coding standards for the **Keystone client**. These rules are normative,
-mirroring the backend guidelines (`docs/CODING_GUIDELINES_BACKEND.md`).
+Enterprise-grade coding standards for the **Keystone client** (Flutter — web, iOS, Android).
+These rules are normative and align with the system architecture
+(`docs/ARCHITECTURE.md`) and mirror the backend guidelines
+(`docs/CODING_GUIDELINES_BACKEND.md`). The client talks to the Java service over REST and to
+Supabase Realtime over WebSocket; the web build is hosted on Firebase Hosting.
 
 ## 1. Platform & Toolchain
 
@@ -12,10 +15,25 @@ mirroring the backend guidelines (`docs/CODING_GUIDELINES_BACKEND.md`).
 | State management | **Riverpod** (codegen via `riverpod_generator`) |
 | Models | **freezed** + **json_serializable** (immutable, value-typed) |
 | REST client | **dio** |
-| Real-time | **stomp_dart_client** (STOMP over WebSocket → RabbitMQ) |
+| Real-time | **Supabase Realtime** client (WebSocket) |
 | Routing | **go_router** (declarative, typed routes) |
 | Auth | **flutter_appauth** (OAuth2/OpenID Connect, PKCE) |
+| Web hosting | **Firebase Hosting** (Flutter web build) |
 | Lints / format | `flutter_lints` + `dart format`; `pubspec.lock` committed |
+
+> **Deprecation discipline.** Do not use deprecated (`@Deprecated`) APIs, classes, packages,
+> or annotations — whether in the Dart SDK, Flutter, Riverpod, or a third-party package. A
+> deprecation is a removal warning: migrate to the documented replacement rather than
+> suppressing the analyzer warning. Treat a deprecation warning from `flutter analyze` as a
+> defect to fix, not noise to ignore.
+
+> **SDK & dependency policy.** Pin the Dart SDK, Flutter, and package versions (a committed
+> `pubspec.lock`); do not bump them opportunistically. Upgrade Flutter/Dart or a package only
+> when explicitly requested.
+
+> **Version discipline.** Verify against the current Flutter, Dart, Riverpod, freezed, and
+> dio reference documentation. Do not copy older idioms (e.g. `StateNotifier`,
+> `ChangeNotifierProvider`) into new code.
 
 ## 2. Language: Use Dart 3 Features
 
@@ -73,7 +91,7 @@ lib/
 ├── main.dart
 ├── app/                    # bootstrap, router (go_router), theme, providers
 ├── core/                   # shared: config, network, auth, error, logging
-│   ├── network/            #   dio client, interceptors, stomp client
+│   ├── network/            #   dio client, interceptors, realtime client
 │   ├── auth/               #   appauth, secure token storage
 │   └── error/              #   failure types and error mapping
 └── features/
@@ -89,7 +107,7 @@ Layering rules:
 
 - `presentation` talks only to `application` (providers), never to `data` clients directly.
 - `application` orchestrates `data` repositories; no I/O or HTTP here.
-- `data` owns models, DTO mapping, and all I/O (`dio`, `stomp_dart_client`).
+- `data` owns models, DTO mapping, and all I/O (`dio`, Supabase Realtime).
 - Models are immutable; the UI emits a new state instead of mutating a model.
 
 ## 6. State Management (Riverpod)
@@ -106,69 +124,132 @@ Layering rules:
 
 ## 7. Networking
 
-- **REST** via `dio`: one shared instance with interceptors for auth (bearer), logging,
+The client talks to the system over two channels (see `docs/ARCHITECTURE.md` §2, §5): REST
+(HTTPS/JSON) to the **Java service (Javalin)** and a WebSocket subscription to **Supabase
+Realtime**.
+
+### 7.1 REST (dio)
+
+- One shared `dio` instance with interceptors for auth (bearer), correlation id, logging,
   retry, and timeouts.
-- Follow **use-case → repository → client**: UI → use-case → repository → `dio`/STOMP.
+- Follow **use-case → repository → client**: UI → use-case → repository → `dio`.
 - DTOs are `freezed` classes with `json_serializable` `fromJson`/`toJson`; map DTO ↔ domain
   model in `data`.
-- **STOMP** via `stomp_dart_client`: subscribe to `/topic/…`, send to `/app/…` or
-  `/queue/…` (same nginx-routed RabbitMQ broker as the backend).
-- Implement reconnect/backoff for STOMP and handle offline gracefully.
+- Server errors come back as RFC 9457 `application/problem+json`; parse them into a typed
+  failure (see §9).
 - Never parse JSON into `dynamic` maps in the UI — always through typed models.
 
-## 8. Error Handling
+### 7.2 Realtime (Supabase Realtime)
+
+- Subscribe to channels over WebSocket and receive messages broadcast by the Java service
+  (see `docs/ARCHITECTURE.md` §5.2).
+- Use the **anon (publishable) key** and user token on the client; **never** the
+  service-role key (server-side only).
+- Consume a typed, versioned message envelope (not raw JSON); ignore unknown versions.
+- Treat received messages as **idempotent** — tolerate duplicates and re-delivery.
+- Implement reconnect with exponential backoff and **resubscribe** on reconnect; handle
+  offline gracefully.
+
+## 8. Configuration & Environment
+
+- Environment-specific values come in at build time via `--dart-define`
+  (`String.fromEnvironment`) or build flavors — never hard-coded per environment.
+- Required config: Java API base URL, Supabase URL + anon key, OAuth2/OIDC client id and
+  redirect URI, Realtime channel prefix.
+- The Supabase **anon (publishable) key** is public and safe to ship; the **service-role
+  key** must never appear in a client bundle (web, iOS, or Android) — it stays server-side.
+- Firebase Hosting config is public too (no secrets); secrets live in the backend's
+  environment / Secret Manager.
+- No secrets or environment URLs committed to source; document new config in the env template.
+
+## 9. Error Handling
 
 - Model expected failures as sealed/union result types (`freezed`) — do not throw for
   control flow.
-- Map transport errors (Dio exceptions, STOMP failures) to domain failures at the
+- Map transport errors (Dio exceptions, Realtime failures) to domain failures at the
   repository boundary.
+- Map HTTP status to typed failures: 401/403 → auth, 404 → not found, 409 → conflict,
+  400/422 → validation (field-level), 429 → retry/backoff, 5xx → transient server error.
+- Server `application/problem+json` (RFC 9457) maps to a typed failure; validation errors
+  surface as field-level messages.
 - Show user-facing messages from a single error-mapping layer; never leak raw Dio/HTTP
   errors or stack traces to the UI.
-- Server `ProblemDetail` (RFC 9457) maps to a typed failure; validation errors surface as
-  field-level messages.
 
-## 9. Routing
+## 10. Routing
 
 - `go_router` with typed, declarative routes and typed path parameters.
 - Guard authenticated routes with a `redirect` based on auth state.
 - Use named route constants; no magic string paths scattered through widgets.
 
-## 10. Security
+## 11. Security
 
-- OAuth2/OpenID Connect **PKCE** via `flutter_appauth`; bearer token to the Spring Security
+- OAuth2/OpenID Connect **PKCE** via `flutter_appauth`; bearer token to the Java (Javalin)
   resource server.
 - Store tokens in **`flutter_secure_storage`** (Keychain/Keystore), never in
   `shared_preferences`.
 - Attach the bearer token via a `dio` interceptor; handle silent token refresh.
+- **Realtime auth**: authenticate the Supabase channel with the user token and the anon key;
+  the service-role key must never ship in a client bundle.
+- Respect the backend's CORS policy for the Flutter web origin.
 - Never log or commit tokens, secrets, or PII.
 
-## 11. Testing
+## 12. Logging & Observability
+
+- Use a structured logger (e.g. `logger`) with a consistent format; no `print` in app code.
+- Propagate the backend's **correlation id** (returned in REST responses) into logs and
+  Realtime messages for end-to-end tracing.
+- **Redact** tokens, PII, and secrets from logs; never log request/response bodies that may
+  contain sensitive data.
+- Report uncaught errors to an error-reporting provider (e.g. Sentry / Firebase Crashlytics)
+  with a stable release/version tag.
+
+## 13. Testing
 
 - **Unit**: business logic and Riverpod notifiers using `ProviderContainer` (mock with
   `mocktail`).
 - **Widget**: screens/components with `WidgetTester`.
 - **Golden**: sparingly, for stable design-system components.
-- **Integration**: `integration_test` for critical end-to-end flows (incl. STOMP).
+- **Integration**: `integration_test` for critical end-to-end flows (incl. Realtime
+  subscription/publish and reconnect).
+- **Realtime**: fake the channel/WebSocket boundary in unit tests; cover reconnect and
+  duplicate-message idempotency.
 - Naming: `should_<behavior>_when_<condition>` (matches backend). Arrange–Act–Assert;
   deterministic, no shared mutable state between tests.
 
-## 12. Code Review Checklist
+## 14. Code Review Checklist
 
 Before merging, confirm:
 
 - [ ] Immutable `freezed` models; `const` where possible; no shared mutable state
 - [ ] Riverpod `Notifier`/`AsyncNotifier` used; no global mutable singletons
 - [ ] Typed models for JSON; no `dynamic` maps in UI; no avoidable `!` assertions
-- [ ] `dio`/STOMP access isolated in `data`; UI never talks to clients directly
+- [ ] `dio`/Realtime access isolated in `data`; UI never talks to clients directly
+- [ ] Realtime uses the anon key only; no service-role key or secrets in any client bundle
+- [ ] Config injected via `--dart-define`/flavors; no hard-coded environment URLs
 - [ ] Errors mapped to typed failures; no raw exceptions/stack traces in the UI
-- [ ] Tokens in secure storage; no secrets/PII logged
+- [ ] Logs redact tokens/PII; correlation id propagated
+- [ ] Tokens in secure storage; no secrets/PII logged or committed
 - [ ] Tests added and passing; `flutter analyze` and `dart format` clean
+- [ ] No deprecated SDK/Flutter/package APIs; `flutter analyze` free of deprecation warnings
 - [ ] Feature-first structure and go_router conventions followed
+
+## 15. Deployment
+
+- **Web**: build with `flutter build web` and deploy to **Firebase Hosting**
+  (`firebase deploy --only hosting`) — a global CDN with TLS and atomic, previewable
+  rollouts.
+- **iOS / Android**: distributed through the App Store / Play Store.
+- Firebase Hosting config is **public** (no secrets); it holds only backend/Supabase URLs and
+  public keys. Never embed the Supabase service-role key or other secrets in the web bundle.
 
 ## References
 
+- Architecture: `docs/ARCHITECTURE.md`
 - Backend guidelines: `docs/CODING_GUIDELINES_BACKEND.md`
 - Flutter & Dart documentation: <https://flutter.dev>, <https://dart.dev>
 - Riverpod: <https://riverpod.dev>
 - freezed: <https://pub.dev/packages/freezed>
+- go_router: <https://pub.dev/packages/go_router>
+- flutter_appauth: <https://pub.dev/packages/flutter_appauth>
+- Supabase Realtime (client): <https://supabase.com/docs/guides/realtime>
 

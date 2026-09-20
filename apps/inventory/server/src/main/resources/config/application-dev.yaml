@@ -1,0 +1,5 @@
+# Development environment. Non-secret values only; the password comes from DB_PASSWORD
+# (environment variable / Secret Manager), never from this file.
+database:
+  url: jdbc:postgresql://db.inventory-dev.internal:5432/inventory   # TODO: real dev host
+  username: keystone

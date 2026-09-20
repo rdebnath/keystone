@@ -1,0 +1,5 @@
+# Local development. Matches compose.yaml (PostgreSQL on localhost, `inventory` database).
+database:
+  url: jdbc:postgresql://localhost:5432/inventory
+  username: keystone
+  password: keystone   # throwaway local-only credential

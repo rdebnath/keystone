@@ -1,7 +1,7 @@
 # Keystone — Coding Guidelines
 
-Enterprise-grade coding standards for the **Keystone** application. These rules are
-normative: code that deviates from them must either be fixed or carry an explicit,
+Enterprise-grade coding standards for the **Keystone** platform and its applications. These
+rules are normative: code that deviates from them must either be fixed or carry an explicit,
 reviewed justification.
 
 ## 1. Platform & Toolchain
@@ -10,20 +10,28 @@ reviewed justification.
 | --- | --- |
 | Language | **Java 25 (LTS)** — pinned; upgrade the JDK only when explicitly requested |
 | Runtime | Virtual threads enabled by default (see §6) |
-| Framework | **Spring Boot 4.x** (Spring Framework 7, Jakarta EE 11) |
-| Persistence | **JPA (Jakarta Persistence 3.2)** with **Hibernate ORM 7** as the provider |
-| Database | **PostgreSQL** — the single relational database (see §7) |
-| Communication | REST request/response + STOMP (RabbitMQ) pub/sub (see §8) |
-| API Gateway | **nginx** — terminates TLS and fronts all services (see §8) |
-| Build | **Maven *and* Gradle** — both are maintained and kept in sync |
+| Framework | **Guice** (Google dependency injection) |
+| Persistence | **jOOQ** (type-safe SQL; generated from Liquibase changelogs) |
+| Database | **PostgreSQL** (Supabase-managed) — each application owns its own database (see §7) |
+| Communication | REST request/response + Supabase Realtime broadcast (see §8) |
+| API Gateway | Google Cloud Run front-end — terminates TLS (see §8); no self-managed gateway |
+| Build | **Maven** |
 | IDE | IntelliJ IDEA (shared `.editorconfig` committed to the repo) |
 
 > **JDK policy.** The Java version is pinned in the build files and the IntelliJ SDK. Do
 > not bump it opportunistically; upgrade the JDK only when explicitly requested.
 
-> **Version discipline.** Spring Boot 4 is a major release. Do not copy Spring Boot 2.x/3.x
-> idioms (old `WebClient` defaults, deprecated auto-configuration, `spring.factories`,
-> pre-`RestClient` code). Verify against the Spring Boot 4 / Spring Framework 7 docs.
+> **Version discipline.** Pin the Guice, Javalin, jOOQ, and JVM versions in the build files.
+> Do not copy older framework idioms or deprecated auto-configuration patterns. Verify
+> against the current Guice, Javalin, and jOOQ reference documentation.
+
+> **Deprecation discipline.** Do not use deprecated (`@Deprecated`) APIs, classes,
+> annotations, packages, or configuration — whether in the JDK, Guice, Javalin, jOOQ, a
+> third-party library, or our own code. A deprecation is a removal warning: using it bakes
+> in future breakage and compiler warnings. Migrate to the documented replacement instead of
+> suppressing the warning (e.g. Testcontainers' `org.testcontainers.*` module classes, or
+> jOOQ's newer generated/DSL APIs). Treat a deprecation warning in a build or an IDE
+> inspection as a defect to fix, not noise to ignore.
 
 ## 2. Language: Use Java 25 Features
 
@@ -122,8 +130,8 @@ for (Order order : orders) {
 - **Packages**: all-lowercase, reverse-DNS root `com.acme.keystone`, feature-oriented
   (see §5). No underscores.
 - **Classes/interfaces/records/enums**: `UpperCamelCase`. Interfaces are *not* prefixed
-  with `I`. Implementation suffix only when it adds information (`JpaOrderRepository`,
-  `H2…`), never `OrderServiceImpl`.
+  with `I`. Implementation suffix only when it adds information (`JooqOrderRepository`),
+  never `OrderServiceImpl`.
 - **Methods/fields**: `lowerCamelCase`, verbs for methods, nouns for fields.
 - **Constants**: `UPPER_SNAKE_CASE` for `static final` primitives/Strings; for complex
   constants prefer immutable collections or enums.
@@ -138,150 +146,239 @@ for (Order order : orders) {
 ## 5. Architecture & Packaging
 
 Package **by feature**, not by layer. Each feature owns its web, service, persistence,
-and messaging concerns; cross-cutting infrastructure lives in a shared module/package.
+and realtime concerns; cross-cutting infrastructure lives in a shared module/package.
 
 ```
 com.acme.keystone
-├── KeystoneApplication.java          # @SpringBootApplication
+├── Main.java                         # entry point: builds the Guice Injector from modules
 ├── common/                           # shared DTOs, errors, util, clock, id-gen
 ├── order/                            # feature: orders
-│   ├── api/                          #   REST controllers + DTOs (request/response)
+│   ├── api/                          #   HTTP handlers/routes + DTOs (request/response)
 │   ├── application/                  #   use-case services, ports (interfaces)
-│   ├── domain/                       #   entities, value objects, domain rules
-│   └── persistence/                  #   JPA repositories + adapters
+│   ├── domain/                       #   records, value objects, domain rules
+│   └── persistence/                  #   jOOQ DAOs/repositories + adapters
 ├── notification/                     # feature: notifications (pub/sub)
 │   └── ...
-└── config/                           # cross-cutting @Configuration, security, observability
+└── config/                           # cross-cutting Guice modules, security, observability
 ```
 
 ### Layering rules
 
 - **`api`** talks only to **`application`** (ports). It never reaches `persistence` directly.
-- **`domain`** is framework-agnostic — no Spring, no JPA imports (except annotations on
-  entities when using JPA-mapped entities). Pure Java + tests.
+- **`domain`** is framework-agnostic — no Guice, no jOOQ imports. Pure Java + tests.
 - **`application`** defines **ports** (interfaces) that `persistence` implements — so the
-  service layer depends on abstractions, not on Hibernate/Spring Data directly.
+  service layer depends on abstractions, not on jOOQ/DAO details directly.
 - **DTOs are records** and are defined where they are produced (request DTOs in `api`,
   response/projection DTOs may live in `application`).
-- Mapping between entity ↔ DTO is explicit (a `*Mapper` component or a constructor/method);
-  never expose JPA entities from `api` controllers.
+- Mapping between row/record ↔ DTO is explicit (a `*Mapper` component or a constructor);
+  never expose persistence types from `api` handlers.
 
-## 6. Spring Boot Conventions
+### Configuration
 
-- **Constructor injection only.** No `@Autowired` field/setter injection. Lombok is
-  discouraged — write the constructor, or use compact constructors on records.
-- **Controllers**: thin `@RestController`s. Validate input via Jakarta Validation
-  (`@Valid`, `@NotBlank`, …) on record DTOs. Return typed DTOs, never entities or `Map`.
-- **Configuration**: bind external properties with `@ConfigurationProperties` records
-  (`@Validated` where needed). Avoid `@Value` for grouped config.
-- **Clients**: use `RestClient` for straightforward HTTP, and **HTTP Service Clients
-  (`@HttpExchange`)** for declarative server-to-server APIs. Avoid hand-rolled
-  `HttpClient`/`WebClient` boilerplate.
-- **Beans**: name beans explicitly when there are multiple candidates
-  (`@Qualifier` + meaningful names). Prefer `@Bean` factory methods over component-scan
-  magic for infrastructure.
-- **Profiles & config**: externalize everything (`application.yml`, env vars). No secrets
-  in source. Use `application-{profile}.yml` for environment overrides.
-- **Transactions**: annotate `application` service boundaries with `@Transactional`, not
-  controllers and not repositories (§7).
-- **Virtual threads**: set `spring.threads.virtual.enabled=true`. Keep blocking I/O
-  (JDBC, HTTP) on virtual threads; do not pin them with `synchronized` hot blocks.
+Environment-specific configuration is **typed** and resolved at **runtime**, not baked into the
+image (the frontend is the exception — it uses `--dart-define` at build time).
+
+- Each application owns its config under `<app>/server/src/main/resources/config/`:
+  `application.yaml` (base defaults) and `application-{env}.yaml` (per-environment overrides).
+- `APP_ENV` (default `local`) selects the environment file.
+- **Resolution order (highest precedence wins):** environment variable →
+  `application-{env}.yaml` → `application.yaml` → code default.
+- Config is one immutable `AppConfig` record with nested records per concern (database, server,
+  realtime, security), resolved by a `ConfigLoader` and bound via a `ConfigModule`
+  (`bind(AppConfig.class).toInstance(...)` plus each slice). Services `@Inject` the slice they
+  need, not the whole config.
+- **Secrets never live in files or the repo** — `database.password`, `realtime.serviceRoleKey`,
+  and OIDC keys are supplied via environment variables (Cloud Run → Secret Manager). The only
+  exception is `application-local.yaml`, which may hold throwaway local-only credentials.
+- The same image ships to every environment; only `APP_ENV` and secrets differ per deployment.
+
+## 6. Guice — Dependency Injection & Wiring
+
+Guice is the DI container. Prefer **explicit, code-based wiring** over reflection or
+classpath scanning so the module graph stays readable and testable.
+
+### Modules & bindings
+
+- One `AbstractModule` (or `@Provides` module) per feature and per cross-cutting concern
+  (`OrderModule`, `PersistenceModule`, `ClockModule`, `RealtimeModule`); compose them in
+  `Main` with `Guice.createInjector(Stage.PRODUCTION, ...)`.
+- Bind **interface → implementation** explicitly
+  (`bind(OrderRepository.class).to(JooqOrderRepository.class)`). Use `@ImplementedBy` /
+  `@ProvidedBy` only as a documented default for tests or standalone use.
+- Prefer `bind(Foo.class).toInstance(...)` for fixed values (clock, config record) and
+  `bind(Foo.class).toProvider(...)` for lazy/one-shot construction.
+- Use `@Provides` methods only for objects Guice cannot construct directly (third-party
+  builders, `DSLContext`, `DataSource`, `HttpClient`); keep them small and side-effect-free.
+- Bind `DSLContext`, `DataSource`, and the HTTP client once in infrastructure modules;
+  features depend on those abstractions, never on connection/config details.
+
+### Constructor injection & scopes
+
+- **Constructor injection only** — `@Inject` on the constructor; no field/setter injection.
+  JSR-330 annotations (`@Inject`, `@Named`, `@Singleton`) are the standard.
+- **Scopes**: `@Singleton` for stateless services, DAOs, clients, and config. Use the default
+  (unscoped) binding only for truly short-lived objects; avoid custom request scopes — use a
+  `ScopedValue` for request context instead (§10).
+- No Lombok — write the constructor, or use compact record constructors.
+
+### Assisted injection & factories
+
+- For objects that mix injected dependencies with runtime values (e.g. a `RealtimePublisher`
+  parameterized by channel name), use **AssistedInject** (`@AssistedInject` +
+  `FactoryModuleBuilder`). Never pass the `Injector` into domain/service code.
+
+### Multibindings
+
+- Use **`Multibinder`**/**`MapBinder`** for plugin-style registries (e.g.
+  `Map<String, ErrorMapper>`, a `Set<FeatureModule>`), so features register themselves
+  without editing a central switch.
+- Prefer `MapBinder<String, X>` with a named-key convention over long `switch`/`if` chains.
+
+### Configuration & secrets
+
+- Bind external configuration into an immutable `Config` record at startup (from env vars /
+  Secret Manager); use `@Named` only for a few scalar values. Avoid stringly-typed lookups
+  scattered through the code.
+- Resolve secrets at startup and bind them; never store secrets in source, images, or logs.
+
+### Startup & lifecycle
+
+- Build the injector with **`Stage.PRODUCTION`** so missing bindings fail fast at startup
+  instead of lazily at runtime.
+- `Main` is thin: build the injector, start Javalin, then register a shutdown hook that
+  drains in-flight requests and closes `DataSource`/`DSLContext` on SIGTERM (Cloud Run).
+- No static `Injector` singleton / service-locator — pass dependencies through constructors.
+
+### Application wiring conventions
+
+- **HTTP handlers** are thin Javalin handlers (see §8); they depend on application services,
+  never on DAOs/`DSLContext` directly.
+- **Clients**: use the JDK `HttpClient` (or a thin wrapper); construct it once in a module.
+- **Transactions** belong at the `application` service boundary via
+  `DSLContext.transaction(...)` (§7), never in handlers or DAOs.
+- **Virtual threads**: run request handling on virtual threads (Jetty/Javalin executor with
+  `Thread.ofVirtual().factory()`). Keep blocking I/O (JDBC, HTTP) on virtual threads; do not
+  pin them with `synchronized` hot blocks.
+- **Stateless & health**: keep the process stateless (Cloud Run scales horizontally); expose
+  a `/healthz` liveness/readiness endpoint.
 
 
-## 7. Persistence (JPA / Hibernate)
+## 7. Persistence (jOOQ)
 
-JPA entities are the **one deliberate exception** to immutability — Hibernate requires a
-no-arg constructor and mutable state. Keep that exception contained to `persistence`.
+jOOQ is a **SQL-first** library with a type-safe DSL and code generation. Write SQL
+explicitly; do not fight an ORM. Keep SQL and generated types in the `persistence` layer
+behind the ports defined in `application`.
 
-- **JPA-first, vendor-neutral**: write against the standard Jakarta Persistence API — JPQL,
-  the Criteria API, `EntityManager`, and Spring Data repository methods — not
-  Hibernate-specific APIs (`org.hibernate.*`, `Session`, HQL-only features). This keeps the
-  code portable across JPA providers.
-- **Vendor specifics only when justified**: use a Hibernate-specific API only when it gives
-  measurably better performance *and* there is no JPA-standard alternative. When you do,
-  confine it to the `persistence` layer behind a port so the rest of the app stays
-  vendor-neutral.
-- **Entities** live in `domain` or `persistence`; they are *not* returned by controllers.
-  Return DTO/projection records instead.
-- **Every aggregate root** has `@Version` for optimistic locking and a generated `Long`
-  or `UUID` id. Use a PostgreSQL `SEQUENCE` (via `@SequenceGenerator`) or `uuid`; avoid
-  `IDENTITY` (it defeats JDBC batching).
-- **Lazy loading is the default** (`FetchType.LAZY`). Avoid `EAGER` on `@*ToMany`.
-- **Avoid the N+1 trap.** For reads, use fetch joins in explicit `@Query`, DTO projections
-  (`select new com.acme…Dto(...)`), or `@EntityGraph` — not eager fetching.
-- **Transactions**: `@Transactional(readOnly = true)` for queries, write transactions only
-  around the service method that mutates state. Never on controllers. Prefer programmatic
-  `TransactionTemplate` for multi-step, conditional work.
-- **Value objects**: model them with `@Embeddable` rather than primitive obsession.
-- **No `@Data`/`@EqualsAndHashCode` on entities** (Lombok discouraged anyway); implement
-  `equals/hashCode` on the business key if needed.
-- **Migrations** with **Liquibase** — the schema is versioned via changelogs, never
-  `ddl-auto=update` outside local dev scratch databases.
-- **Batching**: enable JDBC batching and `hibernate.jdbc.batch_size` for bulk writes.
+- **Code generation is the source of truth**: jOOQ generates table/record/sequence types
+  **offline from the Liquibase changelog** (rendered to DDL), never from a live database
+  (see `docs/ARCHITECTURE.md` §6.2).
+- **Type-safe DSL**: build queries with jOOQ's `DSLContext` and the generated classes — no
+  hand-written SQL strings outside `persistence`, no raw JDBC.
+- **Map to records**: project results into immutable records (`record.into(MyDto.class)` or
+  an explicit mapper). Never hand-roll result-set loops.
+- **DAOs/repositories** live in `persistence`; they are *not* returned by handlers. Return
+  DTO/projection records instead.
+- **Every aggregate root** has a generated `Long` or `UUID` id. Use a PostgreSQL `SEQUENCE`
+  or `uuid`; avoid `IDENTITY` (it defeats JDBC batching).
+- **Optimistic locking**: use an explicit `version` (or `updated_at`) column and
+  `UPDATE ... SET version = version + 1 WHERE id = ? AND version = ?`; check the affected
+  row count and raise `ConflictException` on `0` (jOOQ has no `@Version`).
+- **Explicit joins, no N+1.** Write the joins you need (or one DAO method per query shape).
+  Do not loop-and-query.
+- **Transactions**: run `DSLContext.transaction(...)` at the `application` service boundary.
+  Queries run read-only; write transactions only around the service method that mutates
+  state. Never in handlers.
+- **Value objects**: model them as records, not primitive obsession.
+- **No mutable "entities".** Everything is a record/DTO; there is no ORM-managed state, so
+  `equals/hashCode` are plain record semantics on the business key.
+- **Migrations** with **Liquibase** — the schema is versioned via changelogs. Never
+  auto-generate the schema outside local dev scratch databases.
+- **Batching**: use `dslContext.batch(...)`/`batchInsert`/`batchStore` for bulk writes.
 - **PostgreSQL types**: use native types — `jsonb` for JSON, `uuid` for UUID keys, and
-  `timestamptz` (`timestamp with time zone`) for timestamps. Map `jsonb` columns with
-  `@JdbcTypeCode(SqlTypes.JSON)` or a JSON mapper; never store JSON as plain text.
-- **Dialect**: let Hibernate auto-detect `PostgreSQLDialect`; do not hardcode the dialect
-  unless a specific feature requires it.
-- **Cross-service cache sync**: do not synchronize a shared Hibernate L2 cache across
-  services. Invalidate caches via domain events over RabbitMQ (see
-  `docs/adr/0001-event-driven-cache-invalidation.md`).
+  `timestamptz` (`timestamp with time zone`) for timestamps. Bind `jsonb` via jOOQ's JSON
+  binding/forced types; never store JSON as plain text.
+- **Caching/invalidation**: broadcast changes via Supabase Realtime (see §8). Do not rely on
+  an ORM second-level cache.
+
+### Liquibase changelogs
+
+- **One master changelog** that includes versioned, ordered changelog files per change or
+  feature (`db/changelog/…`). Never edit an applied changeset; add a new one.
+- Each changeset is **idempotent** with a stable `id` + `author`; use `preConditions` where a
+  guard is needed. Prefer forward-only (no destructive rollbacks without review).
+- Changelogs are the **single source of truth** for both the database and jOOQ codegen
+  (rendered to DDL offline — see `docs/ARCHITECTURE.md` §6.2). No ad-hoc DDL outside
+  Liquibase.
 
 ### Connection pool (HikariCP)
 
-Spring Boot ships **HikariCP** as the default pool — use it; do not swap pools without a
-reason.
+Use **HikariCP** directly (configured in a Guice module) as the pool; do not swap pools
+without a reason.
 
 - **Pool sizing**: the pool is the concurrency guard for blocking JDBC on virtual threads.
-  Size `spring.datasource.hikari.maximum-pool-size` against PostgreSQL's `max_connections`,
-  not CPU count. Start modest (e.g. 10–20 per service instance) and tune from metrics; a
-  large pool does not add throughput and can exhaust Postgres connections across services.
-- **Timeouts**: set `connection-timeout` (fail fast — do not let threads block forever),
-  and `max-lifetime` a few seconds *below* the shortest DB/proxy idle timeout so the pool
+  Size `maximumPoolSize` against PostgreSQL's `max_connections`, not CPU count. Start modest
+  (e.g. 10–20 per service instance) and tune from metrics; a large pool does not add
+  throughput and can exhaust Postgres connections across services.
+- **Timeouts**: set `connectionTimeout` (fail fast — do not let threads block forever), and
+  `maxLifetime` a few seconds *below* the shortest DB/proxy idle timeout so the pool
   recycles connections before infrastructure drops them.
-- **Keepalive & leak detection**: set `keepalive-time` where idle connections traverse a
-  load balancer/firewall; set `leak-detection-threshold` in dev/staging to catch unclosed
+- **Keepalive & leak detection**: set `keepaliveTime` where idle connections traverse a
+  load balancer/firewall; set `leakDetectionThreshold` in dev/staging to catch unclosed
   connections early.
-- **Metrics & observability**: give the pool a stable `pool-name` and expose HikariCP
-  metrics via Micrometer (`hikaricp.connections.*`). Alert on connection-timeout spikes and
-  pool exhaustion (`hikaricp.connections.pending`).
+- **Metrics & observability**: give the pool a stable `poolName` and expose HikariCP metrics
+  via Micrometer (`hikaricp.connections.*`). Alert on connection-timeout spikes and pool
+  exhaustion (`hikaricp.connections.pending`).
 - **No connection-test-query**: rely on JDBC 4 `Connection.isValid()` for PostgreSQL; do
   not set a legacy `connection-test-query`.
 
-## 8. Communication: Request/Response & Pub/Sub
+## 8. Communication: Request/Response & Realtime
 
-Keystone uses two interaction styles, both fronted by **nginx** as the API gateway.
-nginx terminates TLS, sits in front of every service, and routes both REST traffic and
-WebSocket upgrades.
+Keystone uses two interaction styles. **Google Cloud Run's front-end** terminates TLS and
+routes REST traffic to the Java service; **Supabase Realtime** provides the WebSocket
+broadcast path — there is no self-managed nginx or broker.
 
-### Request/Response (REST)
+### Request/Response (REST — Javalin)
 
-- JSON over HTTP. `@RestController` + records for request/response bodies.
-- Version the API in the path (`/api/v1/…`). Use nouns, not verbs, in resource paths.
+- JSON over HTTP via **Javalin** (embedded Jetty). Route handlers + records for
+  request/response bodies.
+- **Route organization**: feature-scoped handler classes register their own routes under a
+  versioned path group (`app.routes(...)`, `path("/api/v1", ...)`). Use nouns, not verbs, in
+  resource paths.
+- **Handlers are thin**: parse/validate the body, call an application service, write the DTO.
+  Read typed bodies via `ctx.bodyValidator(MyDto.class)` / `ctx.bodyAsClass(...)`; write with
+  `ctx.json(dto)` and the right status.
+- **Cross-cutting** via Javalin `before`/`after` filters (auth, correlation id, logging,
+  CORS) — not duplicated in every handler.
+- **Validation**: Jakarta Validation (`@Valid`, `@NotBlank`, …) on record DTOs; return `400`
+  with field-level errors.
 - Return proper HTTP semantics: `201` for created (with `Location`), `204` for no content,
-  `404`/`409`/`422` for the right failure, `ProblemDetail` (RFC 9457) for errors.
+  `404`/`409`/`422` for the right failure.
+- **Errors** map through one place (§9): a single `app.exception(...)` handler or shared
+  mapper returns RFC 9457 `application/problem+json`; never leak stack traces or SQL.
 - Paginate list endpoints (`page`, `size`, `sort`) and return a typed page wrapper.
 
-### Pub/Sub (STOMP over RabbitMQ)
+### Realtime (Supabase broadcast)
 
-**STOMP with RabbitMQ as the broker** is the single pub/sub mechanism, used for **both**
-directions:
+**Supabase Realtime** is the single realtime fan-out mechanism:
 
-- **UI ↔ process**: STOMP over WebSocket. Clients subscribe to destinations (e.g.
-  `/topic/orders.{id}`); the server publishes typed event records.
-- **Process ↔ process**: STOMP over TCP against the same RabbitMQ broker (via the STOMP
-  plugin), for decoupled, durable service-to-service messaging.
+- **Clients** (Flutter) open a WebSocket and subscribe to Realtime channels.
+- **The Java service publishes** a message to Supabase Realtime (the trigger for broadcast);
+  Supabase fans it out to every subscribed client. See `docs/ARCHITECTURE.md` §5.2.
 
 Conventions:
 
-- **In-process events**: use `ApplicationEventPublisher` + `@EventListener` (or
-  `@TransactionalEventListener` for post-commit) — no broker hop for intra-process pub/sub.
-- **Destinations** are namespaced and versioned: `/topic/…` for fan-out, `/queue/…` for
-  point-to-point. Document each destination.
-- **Event payloads are immutable records** with an event id, timestamp, aggregate id, and
-  version. Never publish JPA entities or internal domain objects directly.
-- **Broker wiring**: configure RabbitMQ via `spring.rabbitmq.*`; enable the STOMP broker
-  relay (`enable-stomp-broker-relay`) so WebSocket and TCP STOMP share the same broker.
+- **In-process events**: use a small typed publisher for intra-process notifications — no
+  broker hop needed within the process.
+- **Channels** are namespaced and versioned (e.g. `orders.{id}`, per tenant where
+  multi-tenancy requires it). Document each channel.
+- **Broadcast payloads are immutable records** with an event id, timestamp, aggregate id,
+  and version. Never publish persistence rows or internal domain objects directly.
+- **Publishing from Java**: publish through a `RealtimePublisher` port (Supabase Realtime
+  broadcast API over HTTPS, or a server-side Realtime client); never call Supabase directly
+  from handlers. Use the **service-role key** server-side only.
+- **Wiring**: configure the Supabase Realtime endpoint/keys; restrict channel access to
+  authorized clients (Realtime auth / RLS). Publish idempotently with retry/backoff,
+  correlating on the event id.
 
 ## 9. Error Handling
 
@@ -289,8 +386,9 @@ Conventions:
   subclasses (`NotFoundException`, `ConflictException`, `ValidationException`,
   `AccessDeniedException`) carrying an error code.
 - **Do not leak internals**: never return stack traces or SQL to clients.
-- **Central handler**: a single `@RestControllerAdvice` maps exceptions to
-  `ProblemDetail` (status, type, title, detail, instance, and an app-specific `code`).
+- **Central handler**: a single global exception handler/filter maps exceptions to an RFC
+  9457 problem+json body (status, type, title, detail, instance, and an app-specific
+  `code`).
 - **Log at the right level**: `WARN` for expected business failures, `ERROR` for
   unexpected ones (with stack trace). Re-throw as-is — don't wrap-and-hide.
 - **Validation failures** → `400` with a list of field errors, not one big message.
@@ -298,11 +396,11 @@ Conventions:
 
 ## 10. Logging & Observability
 
-- **SLF4J** (Logback via Spring Boot). Structured/key-value logging for machine parsing.
+- **SLF4J** (Logback). Structured/key-value logging for machine parsing.
 - **Per-class logger**, but prefer constructor-injected services over logger-per-everything.
 - **Request context**: propagate `traceId`/`tenantId` via a **`ScopedValue`** (not
   `ThreadLocal`) bound at the filter/entry point.
-- **Metrics** via Micrometer: expose `/actuator/metrics`, add `@Timed`/counters on
+- **Metrics** via Micrometer: expose a Prometheus scrape endpoint, add timers/counters on
   meaningful business operations.
 - **Log levels**: `DEBUG` for flow, `INFO` for lifecycle/business milestones, `WARN` for
   recoverable anomalies, `ERROR` for failures needing action.
@@ -312,15 +410,20 @@ Conventions:
 
 - **JUnit 5** + **AssertJ** + **Mockito**. Testcontainers for real dependency testing.
 - **Test pyramid**: many fast unit tests, fewer integration/slice tests, a handful of E2E.
-- **Unit tests**: pure JUnit + AssertJ, no Spring context. Test the functional core
+- **Unit tests**: pure JUnit + AssertJ, no DI container. Test the functional core
   (domain/services) heavily.
 - **Slice tests** for web/data:
-  - `@WebMvcTest` — controllers, validation, and `@RestControllerAdvice` error mapping.
-  - `@DataJpaTest` — repository queries against a PostgreSQL container (Testcontainers).
-    Do not use H2: it does not faithfully reproduce PostgreSQL behavior (types, `jsonb`,
-    sequences).
-- **Integration**: `@SpringBootTest` with Testcontainers for the full stack (PostgreSQL +
-  RabbitMQ) for pub/sub flows.
+  - **Web**: exercise route handlers through a test HTTP client against an embedded server
+    (validation and the global error handler included).
+  - **Data**: test jOOQ DAOs against a PostgreSQL container (Testcontainers). Do not use
+    H2: it does not faithfully reproduce PostgreSQL behavior (types, `jsonb`, sequences).
+  - **Guice**: build the `Injector` from the real modules and override only what's needed via
+    `Modules.override(...)` or dedicated test modules; never start a real Supabase/broker in
+    unit tests.
+  - **Javalin**: use `JavalinTest` (javalin-testtools) to exercise handlers + the global
+    error handler without a full server.
+- **Integration**: build the real Guice `Injector` + embedded server with Testcontainers for
+  the full stack (PostgreSQL + Supabase Realtime) for realtime flows.
 - **Naming**: `should_<behavior>_when_<condition>`. Arrange–Act–Assert, one behavior per test.
 - **Fixtures**: factory methods/records, not giant shared test data. Keep tests deterministic
   and independent (no order/global-state coupling).
@@ -328,15 +431,15 @@ Conventions:
 
 ## 12. Security
 
-- **Spring Security** with OAuth2/OpenID Connect (resource server) is the default. Never
-  roll your own crypto/auth.
-- **Authorization** at the service/method level (`@PreAuthorize`) *and* at the data layer
-  where multi-tenancy requires it.
+- **OAuth2/OpenID Connect (resource server)** is the default: validate JWT access tokens
+  with a JOSE library (e.g. Nimbus JOSE + JWT). Never roll your own crypto/auth.
+- **Authorization** at the service/method level *and* at the data layer where
+  multi-tenancy requires it (a guard/filter + explicit checks).
 - **Validate all input**; treat every request and every pub/sub payload as untrusted.
 - **Store secrets in the environment/secrets manager**, never in source or images.
-- **OWASP awareness**: parameterized queries (JPA handles it), no dynamic SQL
-  concatenation, sanitize output, protect against mass-assignment by never binding
-  directly to entities from DTOs.
+- **OWASP awareness**: parameterized queries (jOOQ binds parameters — never concatenate
+  SQL), no dynamic SQL string building, sanitize output, protect against mass-assignment by
+  never binding directly to DTOs from request bodies without explicit mapping.
 
 ## 13. Code Review Checklist
 
@@ -345,18 +448,24 @@ Before merging, confirm:
 - [ ] Uses Java 25 features appropriately (records, pattern matching, sealed types, …)
 - [ ] Functional style used unless a justified exception exists
 - [ ] No preview features, no string templates, no `null` in public APIs
-- [ ] Entities are not leaked into controllers; DTO records are used at the boundary
-- [ ] Transactions are at the service boundary; N+1 and eager-loading traps avoided
-- [ ] Pub/sub payloads are immutable, versioned records (not entities)
-- [ ] Errors are centralized (`@RestControllerAdvice` + `ProblemDetail`), no leaked internals
-- [ ] Tests added and passing (`mvn test` / `gradle test`)
+- [ ] No deprecated JDK/Guice/Javalin/jOOQ/third-party APIs; build free of deprecation warnings
+- [ ] Persistence rows/DAOs are not leaked into handlers; DTO records are used at the boundary
+- [ ] Transactions are at the service boundary; N+1 traps avoided (explicit joins)
+- [ ] Constructor injection only; no static `Injector`/service-locator; modules are explicit
+- [ ] jOOQ types generated from the Liquibase changelog; no ad-hoc DDL
+- [ ] Pub/sub payloads are immutable, versioned records (not persistence types)
+- [ ] Errors are centralized (one global handler → RFC 9457 problem+json), no leaked internals
+- [ ] Tests added and passing (`mvn test`)
 - [ ] No secrets logged or committed; schema changes are via a Liquibase changelog migration
 - [ ] `.editorconfig`/formatter applied (no formatting churn)
 
 ## References
 
-- Spring Boot 4.x / Spring Framework 7 reference documentation
-- Jakarta Persistence 3.2 & Hibernate ORM 7 docs
+- Guice (Google) user guide and Javadoc
+- Javalin documentation: <https://javalin.io>
+- jOOQ manual and Javadoc: <https://www.jooq.org>
+- Liquibase documentation: <https://docs.liquibase.com>
+- Supabase Realtime: <https://supabase.com/docs/guides/realtime>
 - JDK 25 JEP list: <https://openjdk.org/projects/jdk/25/>
-- ADR-0001: Cross-service cache invalidation (`docs/adr/0001-event-driven-cache-invalidation.md`)
+- Architecture: `docs/ARCHITECTURE.md`
 

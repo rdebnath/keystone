@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.chetana.keystone</groupId>
+        <artifactId>keystone-parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>keystone-bom</artifactId>
+    <packaging>pom</packaging>
+    <name>keystone-bom</name>
+    <description>Keystone platform BOM — pins all platform module versions for consumers.</description>
+
+    <!-- Apps (and platform modules) import this BOM so they only pin ONE platform version. -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.chetana.keystone</groupId>
+                <artifactId>keystone-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.chetana.keystone</groupId>
+                <artifactId>keystone-web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.chetana.keystone</groupId>
+                <artifactId>keystone-data</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.chetana.keystone</groupId>
+                <artifactId>keystone-realtime</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.chetana.keystone</groupId>
+                <artifactId>keystone-security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.chetana.keystone</groupId>
+                <artifactId>keystone-observability</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.chetana.keystone</groupId>
+                <artifactId>keystone-testing</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

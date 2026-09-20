@@ -1,0 +1,22 @@
+# Base defaults shared by every environment.
+#
+# Secrets (database.password, realtime.serviceRoleKey, security keys) are intentionally left
+# empty here and in per-environment files. They are supplied at runtime via environment
+# variables (Cloud Run -> Secret Manager) or, for local development, application-local.yaml.
+
+database:
+  url: ""                # required per environment (DB_URL)
+  username: ""           # required per environment (DB_USERNAME)
+  password: ""           # required at runtime (DB_PASSWORD); see application-local.yaml
+  maxPoolSize: 10
+
+server:
+  port: 8080             # Cloud Run injects PORT, which overrides this
+
+realtime:
+  endpoint: ""           # optional until Supabase Realtime is wired
+  serviceRoleKey: ""     # required when Realtime is enabled; never commit a real value
+
+security:
+  issuer: ""             # optional until OIDC is wired
+  audience: ""

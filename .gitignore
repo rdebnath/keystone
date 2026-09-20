@@ -29,3 +29,17 @@ replay_pid*
 *.iml
 *.ipr
 out/
+
+# Maven
+target/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+
+# Liquibase offline codegen state
+databasechangelog.csv
