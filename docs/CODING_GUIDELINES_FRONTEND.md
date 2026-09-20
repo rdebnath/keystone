@@ -62,6 +62,14 @@ Write in a functional, immutable style, matching the backend ethos.
 
 - **Immutable state**: `freezed` data classes, `final` fields, `const` constructors,
   `List.unmodifiable`/`Set.unmodifiable`.
+- **Constructors & named parameters**: a long positional parameter list is order-sensitive
+  and easy to mis-call. When a constructor or function has **more than seven parameters**,
+  use **named parameters** (mark mandatory ones `required`) — the Dart-native replacement
+  for the backend's builder rule, giving named, order-independent call sites. If the
+  parameters form a cohesive group, extract a small `freezed` value class (a parameter
+  object) instead of flattening them. For **models**, `freezed` classes already use named
+  parameters; if one grows past ~seven fields, split related fields into smaller nested
+  models rather than a mega-model.
 - **Pure functions** for business logic; keep side effects at the edges (repositories,
   clients, listeners).
 - **Model results as sealed/union types** (`freezed` unions) rather than throwing for
@@ -221,6 +229,7 @@ Realtime**.
 Before merging, confirm:
 
 - [ ] Immutable `freezed` models; `const` where possible; no shared mutable state
+- [ ] Constructors/functions with >7 parameters use named parameters; large models decomposed
 - [ ] Riverpod `Notifier`/`AsyncNotifier` used; no global mutable singletons
 - [ ] Typed models for JSON; no `dynamic` maps in UI; no avoidable `!` assertions
 - [ ] `dio`/Realtime access isolated in `data`; UI never talks to clients directly

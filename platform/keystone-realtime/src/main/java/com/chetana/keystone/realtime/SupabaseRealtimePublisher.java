@@ -13,7 +13,7 @@ import java.util.Map;
  * Publishes to Supabase Realtime over HTTPS using the JDK {@link HttpClient}.
  *
  * <p>NOTE: the exact broadcast endpoint/shape is still an open question (see
- * docs/ARCHITECTURE.md §11); this is the server-side transport skeleton using the service-role
+ * docs/ARCHITECTURE.md §12); this is the server-side transport skeleton using the service-role
  * key. The service-role key must never leave the backend.
  */
 public final class SupabaseRealtimePublisher implements RealtimePublisher {

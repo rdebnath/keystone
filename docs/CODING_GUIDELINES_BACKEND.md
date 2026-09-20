@@ -82,6 +82,14 @@ pipelines, immutable data carriers, and pure functions. Fall back to imperative 
 
 - **Immutability first.** Use records, `List.of/Set.of/Map.of`, `Collections.unmodifiable*`,
   and `final` fields. Prefer `Stream.toList()` over `collect(Collectors.toList())`.
+- **Constructors & builders.** A constructor is a positional API; beyond about seven
+  parameters, call sites get error-prone. Provide a hand-written builder when a constructor
+  has **more than seven parameters**, or earlier when several parameters share a type or are
+  optional — named builder methods prevent argument-order bugs. No Lombok: write the builder
+  by hand (§6). For **records**, prefer **decomposing** into smaller nested records that
+  group related components (as `AppConfig` does) over adding a builder: records are
+  transparent data carriers and a builder usually adds ceremony. Add a record builder only
+  when decomposition doesn't fit and call sites need named/optional construction.
 - **`Optional` only for return values.** Never for fields, record components, or method
   parameters. Return an empty collection rather than a nullable/`Optional` collection.
 - **No `null` in public APIs.** Return `Optional.empty()` or a sentinel/result type.
@@ -452,6 +460,7 @@ Before merging, confirm:
 - [ ] Persistence rows/DAOs are not leaked into handlers; DTO records are used at the boundary
 - [ ] Transactions are at the service boundary; N+1 traps avoided (explicit joins)
 - [ ] Constructor injection only; no static `Injector`/service-locator; modules are explicit
+- [ ] Constructors with >7 parameters use a hand-written builder; large records are decomposed
 - [ ] jOOQ types generated from the Liquibase changelog; no ad-hoc DDL
 - [ ] Pub/sub payloads are immutable, versioned records (not persistence types)
 - [ ] Errors are centralized (one global handler → RFC 9457 problem+json), no leaked internals

@@ -1,6 +1,6 @@
 # Keystone — Architecture
 
-> **Status:** Accepted (target architecture) · **Last updated:** 2026-09-19
+> **Status:** Accepted (target architecture) · **Last updated:** 2026-09-20
 >
 > This document defines the system-level architecture of **Keystone**. It is the point of
 > reference for the coding guidelines (`docs/CODING_GUIDELINES_BACKEND.md`,
@@ -196,6 +196,7 @@ Flutter client          Supabase Realtime              Java backend
 - The Java service validates the token (resource-server semantics) and enforces authorization.
 - Realtime channel access is restricted to authorized clients (Supabase Realtime auth / RLS
   as appropriate).
+- See §9 for the full identity, tenancy, and authorization model.
 
 ## 6. Database & Schema Management
 
@@ -256,9 +257,83 @@ Flutter client          Supabase Realtime              Java backend
   - OAuth2/OIDC issuer + audience (for token validation).
 - No secrets in source, images, or logs.
 
-## 9. Cross-Cutting Concerns
+## 9. Identity, Tenancy & Authorization
 
-- **Security**: OIDC resource-server token validation; authorization at the service boundary.
+### 9.1 Authentication (identity)
+
+- **OIDC / OAuth2 resource server** is the model. The Flutter client authenticates with
+  **PKCE** (`flutter_appauth`); the Java service only *validates* JWTs — it never stores or
+  checks a password.
+- **Identity provider**: **Supabase Auth** is the default. It is already part of the stack,
+  manages credential storage (bcrypt-hashed, in its own `auth.users`), and issues one JWT
+  that authenticates **both** REST (validated by the Java service) and Realtime (channel
+  auth). An **external IdP** (Auth0, Keycloak, Entra/Azure AD, Firebase Auth) is a drop-in
+  alternative because validation is against `issuer` + `audience` + `JWKS`
+  (`SecurityConfig`), not a specific vendor.
+- The Java service stores only the token **`sub`** as a reference to the user; it never
+  stores credentials.
+
+### 9.2 Tenancy
+
+- **Two authorization planes**:
+  - **Platform** — cross-tenant: create customers (tenants), manage the platform.
+  - **Tenant** — within one customer: manage that customer's users and roles.
+- A **platform user** has no tenant (`users.tenant_id IS NULL`); a **tenant user** belongs to
+  exactly one tenant. Single-tenant membership is the default; multi-tenant membership is a
+  future extension via a join table.
+
+### 9.3 Authorization (RBAC)
+
+- **Roles** group **permissions**; roles are assigned to **users**. Code checks
+  **permissions only, never roles**, so the role taxonomy can change without a code change.
+- **Effective permissions** = the union of permissions across all of a user's roles, resolved
+  in the current tenant context.
+- Permission codes are namespaced: `platform:tenant:create`, `tenant:user:create`,
+  `tenant:role:assign`, and domain permissions such as `inventory:item:write`.
+
+### 9.4 Schema
+
+```sql
+tenants          (id uuid PK, name text, ...)
+users            (id uuid PK, sub text UNIQUE, tenant_id uuid NULL REFERENCES tenants, ...)
+roles            (id uuid PK, code text, scope text CHECK (scope IN ('PLATFORM','TENANT')))
+permissions      (id uuid PK, code text, scope text CHECK (scope IN ('PLATFORM','TENANT')))
+role_permissions (role_id FK, permission_id FK, PRIMARY KEY (role_id, permission_id))
+user_roles       (user_id FK, role_id FK, tenant_id uuid NULL, PRIMARY KEY (user_id, role_id, tenant_id))
+```
+
+- `user_roles.tenant_id` is `NULL` for platform roles and set for tenant roles; `CHECK`
+  constraints enforce that `TENANT` roles always carry a tenant and `PLATFORM` roles never do.
+- Effective permissions are computed as `user_roles ⋈ role_permissions`, filtered by
+  `ur.tenant_id IS NULL OR ur.tenant_id = :tenantContext`.
+
+### 9.5 Delegated administration
+
+- **Platform admin** provisions tenants, seeds each tenant's first admin, and assigns
+  platform roles.
+- **Tenant admin** creates users within their own tenant and assigns **tenant-scoped** roles
+  only.
+- **Guardrails**:
+  - *Scope* — a tenant admin cannot grant a `PLATFORM` role.
+  - *No escalation* — a tenant admin can only grant roles whose permissions are a subset of
+    their own ("grant only what you hold").
+  - *Catalog* — roles start as a **platform-defined catalog**; tenant-defined custom roles
+    are a later option.
+
+### 9.6 Enforcement
+
+- **Backend (authoritative)**: a `@RequirePermission(...)` guard at the handler boundary plus
+  explicit checks in services for resource-level rules (ownership). Denial throws
+  `AccessDeniedException` → RFC 9457 `403`.
+- **Frontend (UX only)**: the backend exposes the effective set via `GET /me`
+  (`sub`, `tenantId`, `permissions[]`). The Flutter client renders controls from it (Riverpod
+  + `go_router` redirect + per-resource capability flags on DTOs). The backend is the only
+  security boundary; a bypassed client still receives `403`.
+
+## 10. Cross-Cutting Concerns
+
+- **Security**: OIDC resource-server token validation; RBAC authorization at the service
+  boundary (see §9).
 - **Observability**: SLF4J + Logback structured logging; Micrometer metrics; trace/tenant
   correlation via `ScopedValue`.
 - **Error handling**: one global exception handler → RFC 9457 `application/problem+json`.
@@ -266,7 +341,7 @@ Flutter client          Supabase Realtime              Java backend
 - **Graceful shutdown**: honor Cloud Run's SIGTERM to drain in-flight requests.
 - **CORS**: enable for the Flutter web origin.
 
-## 10. Key Decisions & Rationale
+## 11. Key Decisions & Rationale
 
 | Decision | Rationale |
 | --- | --- |
@@ -279,12 +354,11 @@ Flutter client          Supabase Realtime              Java backend
 | Firebase Hosting (Flutter web) | Global CDN + TLS; trivial static hosting with atomic rollbacks. |
 | Monorepo (`platform/` + `apps/`) | Atomic cross-cutting changes now; apps can be split into separate repos later. |
 | One app = one GCP project | Isolation of billing, IAM, quotas, and blast radius. |
+| Supabase Auth (IdP) + RBAC | Managed credentials; code checks permissions (not roles) across platform/tenant planes with delegated administration. |
 
-## 11. Open Questions
+## 12. Open Questions
 
 - Exact Supabase Realtime **publish** mechanism from Java (Realtime broadcast REST endpoint
   vs. a server-side Realtime WebSocket client).
-- Auth provider: Supabase Auth vs. an external OIDC identity provider, and how the Java
-  service validates tokens issued to Realtime.
 
 
