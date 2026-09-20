@@ -47,6 +47,7 @@
         <assertj.version>3.27.7</assertj.version>
         <junit-jupiter.version>6.1.3</junit-jupiter.version>
         <hikaricp.version>7.1.0</hikaricp.version>
+        <guava.version>33.7.1-jre</guava.version>
 
         <!-- Plugin versions -->
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
@@ -67,6 +68,11 @@
                 <groupId>com.google.inject</groupId>
                 <artifactId>guice</artifactId>
                 <version>${guice.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.javalin</groupId>
@@ -194,11 +200,21 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven-surefire-plugin.version}</version>
+                    <configuration>
+                        <!-- Guice 7.0.0 (latest release) still calls the terminally-deprecated
+                             sun.misc.Unsafe::staticFieldBase from its AOP HiddenClassDefiner on JDK 25.
+                             No newer Guice exists to fix it upstream (google/guice#1909).
+                             "allow" silences the JDK deprecation warning; behavior is unchanged. -->
+                        <argLine>--sun-misc-unsafe-memory-access=allow</argLine>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${maven-failsafe-plugin.version}</version>
+                    <configuration>
+                        <argLine>--sun-misc-unsafe-memory-access=allow</argLine>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.liquibase</groupId>

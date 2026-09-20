@@ -236,6 +236,9 @@
                         <mainClass>com.chetana.keystone.inventory.Main</mainClass>
                         <jvmFlags>
                             <jvmFlag>-XX:+UseZGC</jvmFlag>
+                            <!-- Guice 7.0.0 (latest) triggers a terminally-deprecated
+                                 sun.misc.Unsafe::staticFieldBase warning on JDK 25; see google/guice#1909. -->
+                            <jvmFlag>--sun-misc-unsafe-memory-access=allow</jvmFlag>
                         </jvmFlags>
                         <ports>
                             <port>8080</port>
