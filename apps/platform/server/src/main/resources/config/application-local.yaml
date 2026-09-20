@@ -1,0 +1,5 @@
+# Local development. Matches compose.yaml (PostgreSQL on localhost, `platform` database).
+database:
+  url: jdbc:postgresql://localhost:5432/platform
+  username: keystone
+  password: keystone   # throwaway local-only credential

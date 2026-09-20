@@ -23,6 +23,9 @@ docs/         architecture + coding guidelines
 | `platform/keystone-testing` | library | Shared Testcontainers/JavalinTest base + fixtures. |
 | `apps/inventory` | application | Inventory — a holder for its `server/` and `frontend/`. |
 | `apps/inventory/server` | service | Inventory backend (Guice + Javalin + jOOQ). |
+| `apps/platform` | application | Platform admin console — a holder for its `server/` and `frontend/`. |
+| `apps/platform/server` | service | Platform admin backend (identity/tenancy/RBAC administration). |
+| `apps/platform/frontend` | client | Platform admin console (Flutter — web, iOS, Android). |
 
 Dependency direction: `apps/* → platform/*` (via `keystone-bom`). Apps never depend on each
 other.

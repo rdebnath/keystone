@@ -22,6 +22,7 @@
         <module>platform/keystone-observability</module>
         <module>platform/keystone-testing</module>
         <module>apps/inventory</module>
+        <module>apps/platform</module>
     </modules>
 
     <properties>

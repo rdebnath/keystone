@@ -43,3 +43,10 @@ target/
 
 # Liquibase offline codegen state
 databasechangelog.csv
+
+# Flutter / Dart (pubspec.lock is committed per the frontend guidelines)
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
