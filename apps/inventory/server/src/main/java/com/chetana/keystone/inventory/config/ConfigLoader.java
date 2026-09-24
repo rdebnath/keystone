@@ -56,7 +56,8 @@ public final class ConfigLoader {
                 string(env, overlay, base, "DB_URL", "database", "url"),
                 string(env, overlay, base, "DB_USERNAME", "database", "username"),
                 string(env, overlay, base, "DB_PASSWORD", "database", "password"),
-                intValue(env, overlay, base, "DB_MAX_POOL_SIZE", 10, "database", "maxPoolSize"));
+                intValue(env, overlay, base, "DB_MAX_POOL_SIZE", 10, "database", "maxPoolSize"),
+                string(env, overlay, base, "DB_SCHEMA", "database", "schema"));
     }
 
     private static AppConfig.Server server(Map<String, String> env, JsonNode overlay, JsonNode base) {

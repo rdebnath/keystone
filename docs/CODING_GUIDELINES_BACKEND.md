@@ -12,7 +12,7 @@ reviewed justification.
 | Runtime | Virtual threads enabled by default (see §6) |
 | Framework | **Guice** (Google dependency injection) |
 | Persistence | **jOOQ** (type-safe SQL; generated from Liquibase changelogs) |
-| Database | **PostgreSQL** (Supabase-managed) — each application owns its own database (see §7) |
+| Database | **PostgreSQL** (Supabase-managed) — each application owns its own **schema** in a shared database (see §7) |
 | Communication | REST request/response + Supabase Realtime broadcast (see §8) |
 | API Gateway | Google Cloud Run front-end — terminates TLS (see §8); no self-managed gateway |
 | Build | **Maven** |

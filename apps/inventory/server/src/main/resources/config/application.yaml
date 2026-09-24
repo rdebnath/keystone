@@ -9,6 +9,9 @@ database:
   username: ""           # required per environment (DB_USERNAME)
   password: ""           # required at runtime (DB_PASSWORD); see application-local.yaml
   maxPoolSize: 10
+  schema: ""             # optional: blank = default (public) schema of the database named in `url`
+                         #          (separate database per app); set to a value (e.g. "inventory")
+                         #          to isolate apps by schema within a shared database
 
 server:
   port: 8080             # Cloud Run injects PORT, which overrides this

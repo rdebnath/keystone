@@ -53,6 +53,10 @@
             <groupId>com.chetana.keystone</groupId>
             <artifactId>keystone-observability</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.chetana.keystone</groupId>
+            <artifactId>keystone-admin</artifactId>
+        </dependency>
 
         <!-- config (YAML) -->
         <dependency>

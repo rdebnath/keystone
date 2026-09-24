@@ -17,7 +17,7 @@ Supabase Realtime over WebSocket; the web build is hosted on Firebase Hosting.
 | REST client | **dio** |
 | Real-time | **Supabase Realtime** client (WebSocket) |
 | Routing | **go_router** (declarative, typed routes) |
-| Auth | **flutter_appauth** (OAuth2/OpenID Connect, PKCE) |
+| Auth | **backend-proxied OIDC login** (Supabase Auth as IdP); tokens in `flutter_secure_storage` |
 | Web hosting | **Firebase Hosting** (Flutter web build) |
 | Lints / format | `flutter_lints` + `dart format`; `pubspec.lock` committed |
 
@@ -162,8 +162,7 @@ Realtime**.
 
 - Environment-specific values come in at build time via `--dart-define`
   (`String.fromEnvironment`) or build flavors — never hard-coded per environment.
-- Required config: Java API base URL, Supabase URL + anon key, OAuth2/OIDC client id and
-  redirect URI, Realtime channel prefix.
+- Required config: Java API base URL, Supabase URL + anon key, Realtime channel prefix.
 - The Supabase **anon (publishable) key** is public and safe to ship; the **service-role
   key** must never appear in a client bundle (web, iOS, or Android) — it stays server-side.
 - Firebase Hosting config is public too (no secrets); secrets live in the backend's

@@ -9,44 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Platform admin console** — the first concrete platform feature, delivered as a new
-  application `apps/platform` (see `apps/platform/docs/delivery/platform-admin/` for the plan and
-  per-phase details).
+- **Platform as an embedded library** — the platform admin console is no longer a standalone app;
+  it is now two hosted libraries, `platform/keystone-admin` (backend) and
+  `platform/keystone-admin-ui` (Flutter UI). `apps/inventory` hosts them: its server serves the
+  platform admin API and runs the `platform` schema migration + first-user bootstrap; its frontend
+  hosts the common login and routes to the admin UI (platform user) or inventory UI (tenant user).
 
-  - **Backend** (`apps/platform/server`) — identity, tenancy, and RBAC administration:
-    - Schema: `tenants`, `users` (`sub`, `email`, `tenant_id`, `must_change_password`), `roles`,
-      `permissions`, `role_permissions`, `user_roles` (Liquibase changelog, jOOQ codegen).
-    - **OIDC / Supabase Auth** resource-server auth (reuses `keystone-security`; the backend never
-      stores or checks a password).
-    - **Idempotent bootstrap** (`BootstrapRunner` + `SupabaseHttpAdminClient`) using the Supabase
-      service-role key: provisions the `admin` identity in Supabase Auth, seeds the permission
-      catalog and the `platform-admin` role (granted the wildcard `*` permission = all permissions),
-      and assigns that role to the admin.
-    - **Forced first-login password change** via `users.must_change_password` + `GET /me` +
-      `POST /me/password-changed` (the client updates the Supabase Auth password, then clears the flag).
-    - REST API: `GET/POST /api/v1/me`, `POST /api/v1/me/password-changed`, and permission-guarded
-      CRUD for tenants, roles, permissions, and users.
-    - `PermissionGuard` / `AuthFilter` enforce permission checks (`*` wildcard = all) at the boundary.
+  - **Backend** (`platform/keystone-admin`, package `com.chetana.keystone.platform.admin`):
+    - Schema: `tenants` (+ `slug`), `users` (+ `username`; `email` is the virtual/fake Supabase
+      identity, default `username@tenantid.com`), `roles`, `permissions`, `role_permissions`,
+      `user_roles` (DDL-only Liquibase changelog, offline jOOQ codegen).
+    - **Backend-proxied login** (`POST /api/v1/auth/login`): the client posts `username@tenantid`
+      + password; the backend resolves the tenant (reserved slug `keystone` = platform plane) and
+      user, authenticates against Supabase Auth (password grant), and returns the OIDC session.
+      Failures are uniform (no account enumeration).
+    - **Idempotent bootstrap** (`BootstrapRunner`) using the Supabase service-role key: provisions
+      the first platform admin (`admin@keystone`), seeds the permission catalog and the
+      `platform-admin` role.
+    - **Backend-proxied change-password** (`POST /api/v1/me/password`); forced first-login change
+      via `users.must_change_password`.
+    - REST API: `POST /api/v1/auth/login`, `GET /api/v1/me`, `POST /api/v1/me/password`,
+      `POST /api/v1/me/password-changed`, and permission-guarded CRUD for tenants, roles,
+      permissions, and users.
 
-  - **Frontend** (`apps/platform/frontend`) — Flutter admin console (web, iOS, Android):
-    - Login → forced change-password gate → dashboard with Tenants / Roles / Permissions / Users tabs.
-    - Riverpod (no codegen), `dio` REST client, `go_router` auth gate, `supabase_flutter` for
-      Supabase Auth (PKCE) + `updateUser` password change.
+  - **Frontend** (`platform/keystone-admin-ui` + `apps/inventory/frontend`):
+    - Common login (`username@tenantid`), forced change-password gate, and a dashboard with
+      Tenants / Roles / Permissions / Users tabs.
+    - Riverpod, `dio` REST client, `flutter_secure_storage` tokens, and a `go_router` auth gate in
+      the host that routes by `/me` (platform vs. tenant).
 
 ### Changed
 
-- `user_roles` primary key is `(user_id, role_id)` rather than the §9.4 sketch
-  `(user_id, role_id, tenant_id)` — `tenant_id` is nullable, so it cannot be part of the primary
-  key. Multi-tenant role assignment remains a future extension.
-- Seed data (permission catalog + `platform-admin` role) lives in the idempotent runtime bootstrap
-  rather than Liquibase, so the changelog stays DDL-only for offline jOOQ codegen.
+- Platform admin backend/frontend moved from the standalone `apps/platform` app into the hosted
+  `platform/keystone-admin` / `platform/keystone-admin-ui` libraries; `apps/platform` removed.
+- Frontend auth is now **backend-proxied** (previously `flutter_appauth`/Supabase client-side); the
+  guidelines now specify backend-proxied OIDC login.
+- `user_roles` primary key is `(user_id, role_id)` (its `tenant_id` is nullable); tenant-scoped role
+  assignment is carried on `user_roles.tenant_id`.
 
 ### Security
 
 - Supabase service-role key and JWKS/issuer settings are server-only (env / Secret Manager); the
-  client bundle ships only the public anon key and backend URL.
+  client bundle ships only the public backend URL and Supabase anon key.
+- Login failures are uniform (unknown tenant / user / password all yield the same 403) to prevent
+  account enumeration.
 
 ### Deployment
 
-- New app requires its own Supabase project + Cloud Run service; required environment variables are
-  listed in `apps/platform/docs/delivery/platform-admin/08-delivery.md`.
+- A single app (inventory) now migrates both the `inventory` and `platform` schemas and bootstraps
+  the first platform user; there is no separate platform service/deploy.

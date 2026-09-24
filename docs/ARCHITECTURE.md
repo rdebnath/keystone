@@ -24,9 +24,9 @@ An application exposes two channels to its client:
 1. **Request/response** — REST calls (HTTPS/JSON) to the app's Javalin service.
 2. **Realtime streaming** — a WebSocket connection to **Supabase Realtime**.
 
-Each app owns its business logic and data. It persists to its own **Supabase-managed
-PostgreSQL** database and, when it needs to push live updates, **publishes a message through
-Supabase Realtime**, which fans the message out to every subscribed client.
+Each app owns its business logic and data. It persists to its own **schema** in a shared
+**Supabase-managed PostgreSQL** database and, when it needs to push live updates, **publishes a
+message through Supabase Realtime**, which fans the message out to every subscribed client.
 
 ## 2. System Context
 
@@ -59,8 +59,8 @@ The Flutter **web** build is served from **Firebase Hosting** (global CDN with T
 Android builds are distributed through their app stores.
 
 The diagram shows **one application**. Each app is an independent instance of this shape,
-hosted in its own **GCP project** (its own Cloud Run service + database), sharing the platform
-libraries (see §4).
+hosted in its own **GCP project** (its own Cloud Run service + a schema in a shared database),
+sharing the platform libraries (see §4).
 
 ## 3. Technology Stack
 
@@ -135,8 +135,10 @@ Keystone is a monorepo split into two layers:
 
 Supabase is used for two managed capabilities:
 
-1. **Database** — a managed PostgreSQL instance. The Java service is the only direct writer;
-   the schema is applied via Liquibase changelogs.
+1. **Database** — a managed PostgreSQL instance. Apps are isolated by **per-app schema**
+   (`inventory`, `platform`, …) in a shared database, or by separate databases — the choice is
+   per-environment configuration (`DB_URL` + optional `DB_SCHEMA`). The Java service is the only
+   direct writer of its schema; the schema is applied via Liquibase changelogs.
 2. **Realtime** — Supabase Realtime provides the WebSocket broadcast infrastructure. It is
    **not** an application data store; it is the fan-out mechanism for live updates.
 
@@ -191,8 +193,10 @@ Flutter client          Supabase Realtime              Java backend
 
 ### 5.3 Authentication
 
-- The Flutter client authenticates via OAuth2/OIDC (PKCE) and holds an access token.
-- It sends the token to the Java service (Authorization header) for REST calls.
+- The Flutter client authenticates via **backend-proxied login**: it POSTs `username@tenantid` +
+  password to the Java service, which authenticates against Supabase Auth (password grant) and
+  returns the OIDC session (access + refresh tokens), stored in `flutter_secure_storage`.
+- It sends the access token to the Java service (Authorization header) for REST calls.
 - The Java service validates the token (resource-server semantics) and enforces authorization.
 - Realtime channel access is restricted to authorized clients (Supabase Realtime auth / RLS
   as appropriate).
@@ -252,7 +256,7 @@ Flutter client          Supabase Realtime              Java backend
 - All environment-specific configuration is externalized via environment variables and,
   where sensitive, **Google Secret Manager**.
 - Required secrets/values:
-  - Supabase PostgreSQL connection string,
+  - Supabase PostgreSQL connection string (+ per-app `DB_SCHEMA`),
   - Supabase Realtime endpoint + publish key/secret,
   - OAuth2/OIDC issuer + audience (for token validation).
 - No secrets in source, images, or logs.

@@ -24,6 +24,7 @@ public final class DataModule extends AbstractModule {
 
     @Override
     protected void configure() {
+        bind(DatabaseConfig.class).toInstance(config);
     }
 
     @Provides
@@ -34,6 +35,9 @@ public final class DataModule extends AbstractModule {
         hikari.setUsername(config.username());
         hikari.setPassword(config.password());
         hikari.setMaximumPoolSize(config.maxPoolSize());
+        if (config.schema() != null && !config.schema().isBlank()) {
+            hikari.setSchema(config.schema());
+        }
         return new HikariDataSource(hikari);
     }
 

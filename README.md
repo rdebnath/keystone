@@ -21,11 +21,11 @@ docs/         architecture + coding guidelines
 | `platform/keystone-security` | library | OIDC resource-server JWT validation + authorization. |
 | `platform/keystone-observability` | library | Micrometer metrics + structured logging. |
 | `platform/keystone-testing` | library | Shared Testcontainers/JavalinTest base + fixtures. |
+| `platform/keystone-admin` | library | Platform admin console backend — identity/tenancy/RBAC, backend-proxied login, bootstrap. Hosted by apps. |
+| `platform/keystone-admin-ui` | library | Platform admin console UI (Flutter package — login + admin screens). Hosted by apps. |
 | `apps/inventory` | application | Inventory — a holder for its `server/` and `frontend/`. |
-| `apps/inventory/server` | service | Inventory backend (Guice + Javalin + jOOQ). |
-| `apps/platform` | application | Platform admin console — a holder for its `server/` and `frontend/`. |
-| `apps/platform/server` | service | Platform admin backend (identity/tenancy/RBAC administration). |
-| `apps/platform/frontend` | client | Platform admin console (Flutter — web, iOS, Android). |
+| `apps/inventory/server` | service | Inventory backend (Guice + Javalin + jOOQ); hosts the platform admin console. |
+| `apps/inventory/frontend` | client | Inventory frontend (Flutter — web, iOS, Android); hosts the platform admin UI. |
 
 Dependency direction: `apps/* → platform/*` (via `keystone-bom`). Apps never depend on each
 other.
@@ -61,9 +61,11 @@ mvn -pl apps/inventory/server -am jib:build -Djib.to.image=<registry>/inventory
 
 ## Runtime dependencies
 
-Each app owns its database (Supabase-managed PostgreSQL). For local development,
-`docker compose up -d` starts a local PostgreSQL (Testcontainers also needs Docker for the
-integration tests).
+Apps persist to a shared PostgreSQL database (Supabase-managed) isolated by **schema**
+(`inventory`, `platform`) — or to their own database when `database.schema` is left blank. The
+choice is per-environment configuration (`DB_URL` + optional `DB_SCHEMA`). For local development,
+`docker compose up -d` starts one PostgreSQL (database `keystone`); each app creates its schema
+idempotently at startup (Testcontainers also needs Docker for the integration tests).
 
 ## JDK pinning
 

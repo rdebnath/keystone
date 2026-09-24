@@ -21,7 +21,6 @@ public final class ItemHandler implements RouteConfigurer {
 
     @Override
     public void configure(RoutesConfig routes) {
-        routes.get("/healthz", ctx -> ctx.result("ok"));
         routes.get("/api/v1/items", ctx -> ctx.json(service.list()));
         routes.post("/api/v1/items", ctx -> {
             CreateItemRequest request = ctx.bodyAsClass(CreateItemRequest.class);

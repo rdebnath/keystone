@@ -26,7 +26,7 @@ class InventoryIntegrationTest {
     @Test
     void should_migrate_create_and_list_items() {
         DatabaseConfig db = DatabaseConfig.of(
-                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword(), 5);
+                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword(), 5, "inventory");
 
         Injector injector = Guice.createInjector(Stage.PRODUCTION,
                 new DataModule(db), new WebModule(), new InventoryModule());

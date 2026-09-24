@@ -41,11 +41,12 @@ public record AppConfig(
         }
     }
 
-    public record Database(String url, String username, String password, int maxPoolSize) {
+    public record Database(String url, String username, String password, int maxPoolSize, String schema) {
         public Database {
             Objects.requireNonNull(url, "url");
             Objects.requireNonNull(username, "username");
             Objects.requireNonNull(password, "password");
+            Objects.requireNonNull(schema, "schema");
         }
     }
 

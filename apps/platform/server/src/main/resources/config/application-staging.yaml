@@ -1,5 +1,0 @@
-# Staging environment. Secrets are supplied via environment variables (Cloud Run -> Secret Manager).
-database:
-  url: jdbc:postgresql://db.platform-staging.internal:5432/platform
-  username: ""
-  password: ""           # DB_PASSWORD

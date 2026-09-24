@@ -1,0 +1,26 @@
+# Base defaults shared by every environment (platform admin console library).
+#
+# Secrets (database.password, supabase.serviceRoleKey) are intentionally left empty here and in
+# per-environment files. They are supplied at runtime via environment variables
+# (Cloud Run -> Secret Manager) or, for local development, admin-config/application-local.yaml.
+
+database:
+  url: ""                # required per environment (DB_URL)
+  username: ""           # required per environment (DB_USERNAME)
+  password: ""           # required at runtime (DB_PASSWORD); see admin-config/application-local.yaml
+  maxPoolSize: 10
+  schema: "platform"     # the platform schema in the shared database
+
+supabase:
+  url: ""                # Supabase project URL (SUPABASE_URL)
+  serviceRoleKey: ""     # server-only secret; never commit a real value (SUPABASE_SERVICE_ROLE_KEY)
+
+security:
+  issuer: ""             # Supabase project URL, e.g. https://<ref>.supabase.co (OIDC_ISSUER)
+  audience: "authenticated"   # Supabase Auth JWT audience
+  jwksUrl: ""            # e.g. https://<ref>.supabase.co/auth/v1/.well-known/jwks.json (OIDC_JWKS_URL)
+
+bootstrap:
+  adminUsername: "admin"        # login local-part of the first platform admin (admin@keystone)
+  adminEmail: "admin@keystone.com"  # virtual/fake Supabase email; never delivered
+  adminPassword: "changeit"     # well-known initial password; forced change on first login
