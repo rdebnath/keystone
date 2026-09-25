@@ -1,5 +1,6 @@
 package com.chetana.keystone.platform.admin.config;
 
+import com.chetana.keystone.data.DatabaseConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -44,6 +45,22 @@ public final class AdminConfigLoader {
                 supabase(env, overlay, base),
                 security(env, overlay, base),
                 bootstrap(env, overlay, base));
+    }
+
+    /**
+     * Loads only the platform database connection settings, without requiring the Supabase/OIDC/bootstrap
+     * configuration. Intended for schema tooling that operates on the database alone (e.g. SchemaTool).
+     */
+    public static DatabaseConfig databaseConfig() {
+        return databaseConfig(System.getenv());
+    }
+
+    static DatabaseConfig databaseConfig(Map<String, String> env) {
+        String environment = env.getOrDefault(APP_ENV_KEY, DEFAULT_ENV);
+        JsonNode base = readRequired("/admin-config/application.yaml");
+        JsonNode overlay = readOptional("/admin-config/application-" + environment + ".yaml");
+        AdminConfig.Database db = database(env, overlay, base);
+        return DatabaseConfig.of(db.url(), db.username(), db.password(), db.maxPoolSize(), db.schema());
     }
 
     private static AdminConfig.Database database(Map<String, String> env, JsonNode overlay, JsonNode base) {

@@ -51,6 +51,21 @@ mvn -pl apps/inventory/server dependency:build-classpath -Dmdep.outputFile=targe
 java -cp "apps/inventory/server/target/classes:$(cat apps/inventory/server/target/classpath.txt)" com.chetana.keystone.inventory.Main
 ```
 
+## Schema management (CLI)
+
+`SchemaTool` runs Liquibase against the shared database from the command line — create/update,
+drop, or reset the `inventory` + `platform` schemas:
+
+```bash
+mvn -pl apps/inventory/server -am package
+mvn -pl apps/inventory/server dependency:build-classpath -Dmdep.outputFile=target/classpath.txt
+java -cp "apps/inventory/server/target/classes:$(cat apps/inventory/server/target/classpath.txt)" \
+  com.chetana.keystone.inventory.SchemaTool migrate   # or: drop | reset
+```
+
+It uses the same `APP_ENV`/`DB_PASSWORD` configuration as the server (default `local`); Supabase/OIDC
+variables are not required. `drop` and `reset` are destructive (`DROP SCHEMA … CASCADE`).
+
 ## Container image (Cloud Run)
 
 Each app builds its own image with Jib and deploys to its own Cloud Run service:
@@ -64,8 +79,10 @@ mvn -pl apps/inventory/server -am jib:build -Djib.to.image=<registry>/inventory
 Apps persist to a shared PostgreSQL database (Supabase-managed) isolated by **schema**
 (`inventory`, `platform`) — or to their own database when `database.schema` is left blank. The
 choice is per-environment configuration (`DB_URL` + optional `DB_SCHEMA`). For local development,
-`docker compose up -d` starts one PostgreSQL (database `keystone`); each app creates its schema
-idempotently at startup (Testcontainers also needs Docker for the integration tests).
+`docker compose up -d` starts one PostgreSQL (database `keystone`) and initializes the `inventory`
+and `platform` schemas + tables on first start (via `docker/initdb/init.sql`, generated from the
+Liquibase changelogs). The app still migrates idempotently at startup (and `SchemaTool migrate`
+works against it too); Testcontainers also needs Docker for the integration tests.
 
 ## JDK pinning
 

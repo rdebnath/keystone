@@ -44,15 +44,29 @@ class ConfigLoaderTest {
                 "DB_PASSWORD", "dev-secret"));
 
         assertThat(config.environment()).isEqualTo("dev");
-        assertThat(config.database().url()).isEqualTo("jdbc:postgresql://db.keystone-dev.internal:5432/postgres");
+        assertThat(config.database().url()).isEqualTo("jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:6543/keystone");
+        assertThat(config.database().username()).isEqualTo("deployment@chetanatech.com");
         assertThat(config.database().password()).isEqualTo("dev-secret");
         assertThat(config.database().schema()).isEqualTo("inventory");
     }
 
     @Test
+    void should_select_the_demo_environment_file() {
+        AppConfig config = ConfigLoader.load(Map.of(
+                "APP_ENV", "demo",
+                "DB_PASSWORD", "demo-secret"));
+
+        assertThat(config.environment()).isEqualTo("demo");
+        assertThat(config.database().url()).isEqualTo("jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:6543/keystone");
+        assertThat(config.database().username()).isEqualTo("deployment@chetanatech.com");
+        assertThat(config.database().password()).isEqualTo("demo-secret");
+        assertThat(config.database().schema()).isEqualTo("inventory");
+    }
+
+    @Test
     void should_fail_fast_when_required_config_is_missing() {
-        // prod never commits a password; without DB_PASSWORD the config must be rejected.
-        assertThatThrownBy(() -> ConfigLoader.load(Map.of("APP_ENV", "prod")))
+        // Non-local environments never commit a password; without DB_PASSWORD the config must be rejected.
+        assertThatThrownBy(() -> ConfigLoader.load(Map.of("APP_ENV", "demo")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("database.password");
     }

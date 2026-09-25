@@ -227,6 +227,12 @@ classpath scanning so the module graph stays readable and testable.
 - **Scopes**: `@Singleton` for stateless services, DAOs, clients, and config. Use the default
   (unscoped) binding only for truly short-lived objects; avoid custom request scopes — use a
   `ScopedValue` for request context instead (§10).
+- **Prefer instance methods on `@Singleton` beans over `static` methods.** Static utility methods
+  (e.g. `SchemaTool.run(...)`) cannot be overridden or mocked, hide their collaborators, and force
+  callers to hard-code a concrete class. Write a `@Singleton` with constructor-injected dependencies
+  and instance methods instead. Reserve `static` for pure functions (no state, I/O, or collaborators)
+  and for the JVM-mandated `main(...)` entry point, which should be a thin shell that delegates to an
+  instance.
 - No Lombok — write the constructor, or use compact record constructors.
 
 ### Assisted injection & factories
@@ -460,6 +466,7 @@ Before merging, confirm:
 - [ ] Persistence rows/DAOs are not leaked into handlers; DTO records are used at the boundary
 - [ ] Transactions are at the service boundary; N+1 traps avoided (explicit joins)
 - [ ] Constructor injection only; no static `Injector`/service-locator; modules are explicit
+- [ ] Behavior lives on `@Singleton` instance methods, not `static`; `static` only for pure functions and a thin `main`
 - [ ] Constructors with >7 parameters use a hand-written builder; large records are decomposed
 - [ ] jOOQ types generated from the Liquibase changelog; no ad-hoc DDL
 - [ ] Pub/sub payloads are immutable, versioned records (not persistence types)

@@ -6,6 +6,12 @@
                             https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
     <changeSet id="0002-tenant-slug-username" author="keystone">
+        <!-- Idempotency guard: local docker init (docker/initdb/init.sql) may have already applied this. -->
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="tenants" columnName="slug"/>
+            </not>
+        </preConditions>
         <addColumn tableName="tenants">
             <column name="slug" type="VARCHAR(255)">
                 <constraints nullable="false"/>

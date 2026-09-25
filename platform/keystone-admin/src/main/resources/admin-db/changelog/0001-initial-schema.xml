@@ -6,6 +6,12 @@
                             https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
     <changeSet id="0001-initial-schema" author="keystone">
+        <!-- Idempotency guard: local docker init (docker/initdb/init.sql) may have already created this. -->
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="tenants"/>
+            </not>
+        </preConditions>
         <createTable tableName="tenants">
             <column name="id" type="UUID">
                 <constraints primaryKey="true" nullable="false"/>

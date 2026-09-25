@@ -18,6 +18,10 @@ services:
       POSTGRES_PASSWORD: keystone
     ports:
       - "5432:5432"
+    volumes:
+      # Initializes the `inventory` and `platform` schemas + tables on first start (empty data
+      # volume). Generated from the Liquibase changelogs — see docker/initdb/init.sql.
+      - ./docker/initdb/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U keystone"]
       interval: 5s

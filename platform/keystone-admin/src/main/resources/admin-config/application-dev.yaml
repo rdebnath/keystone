@@ -1,6 +1,6 @@
 # Development environment — Supabase-hosted PostgreSQL (shared project). Non-secret values only;
-# the password comes from DB_PASSWORD (environment variable / Secret Manager), never from this file.
+# the password and Supabase/OIDC secrets come from environment variables (Secret Manager).
 database:
   url: jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:6543/keystone
   username: deployment@chetanatech.com
-  schema: inventory    # shared DB -> isolate by schema
+  schema: platform     # shared DB -> isolate by schema

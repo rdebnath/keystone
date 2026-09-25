@@ -1,4 +1,4 @@
-# Development environment — Supabase-hosted PostgreSQL (shared project). Non-secret values only;
+# Demo environment — Supabase-hosted PostgreSQL (shared project). Non-secret values only;
 # the password comes from DB_PASSWORD (environment variable / Secret Manager), never from this file.
 database:
   url: jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:6543/keystone
