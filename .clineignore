@@ -1,0 +1,53 @@
+# ---------------------------------------------------------------------------
+# Cline ignore file
+# Files/directories Cline should never list, search, or read.
+# Keeps search results small and prevents large/generated files from being
+# pulled into the context window. Mirrors .gitignore plus build output.
+# (Cline already ignores .git/ and node_modules/ by default.)
+# ---------------------------------------------------------------------------
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+
+# IntelliJ IDEA (project + per-module metadata)
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Java / Maven build output (target/ appears in every module)
+target/
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+
+# JVM crash logs / logs
+*.log
+hs_err_pid*
+replay_pid*
+
+# Flutter / Dart tooling and build output
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+coverage/
+.widget_preview/
+android/app/debug/
+android/app/profile/
+android/app/release/
+ios/Flutter/.last_build_id
+
+# Dart kernel / obfuscation / symbolication artifacts
+*.dill
+app.*.symbols
+app.*.map.json
+
+# Liquibase offline codegen state
+databasechangelog.csv
