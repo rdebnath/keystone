@@ -58,6 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bootstrap no longer re-lists Supabase Auth users by email on restart: it reads the persisted
   `users.sub` first and provisions (create-or-adopt on conflict) only when absent, fixing the 409
   "user already exists" on restart.
+- **JWT signature verification now accepts elliptic-curve signing keys** (`ES256`, i.e. Supabase
+  Auth's P-256 keys) alongside RSA, selecting the JWKS key named by the token's `kid` and falling
+  back to every key when the `kid` is absent or unknown. Only RSA keys were tried before, so every
+  Supabase-issued access token was rejected with `403 Invalid access token signature` — login
+  succeeded (the token was issued) but `GET /api/v1/me` failed, blocking the first login.
+- **Supabase issuer corrected to include `/auth/v1`** (`https://<ref>.supabase.co/auth/v1`), which
+  is the `iss` claim Supabase Auth puts in access tokens; the previous value omitted the suffix and
+  failed the issuer check.
 
 ### Security
 

@@ -11,7 +11,8 @@ supabase:
   serviceRoleKey: ""     # server-only secret; never commit a real value (SUPABASE_SERVICE_ROLE_KEY)
 
 security:
-  issuer: ""             # Supabase project URL, e.g. https://<ref>.supabase.co (set per environment)
+  issuer: ""             # Supabase Auth issuer — the project URL + /auth/v1, e.g.
+                         # https://<ref>.supabase.co/auth/v1 (set per environment)
   audience: "authenticated"   # Supabase Auth JWT audience
   jwksUrl: ""            # e.g. https://<ref>.supabase.co/auth/v1/.well-known/jwks.json (set per environment)
 

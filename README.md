@@ -57,6 +57,20 @@ The server listens on port `8080` and serves every route under the `/inventory` 
 (e.g. `http://localhost:8080/inventory/api/v1/...`). The Flutter web client points its
 `API_BASE_URL` at `http://localhost:8080/inventory`.
 
+## Dev scripts
+
+Convenience wrappers in `scripts/` (default app `inventory`; pass an app name as the first
+argument):
+
+```bash
+scripts/start-server.sh inventory   # build + run the Java backend service (needs DB_PASSWORD,
+                                    #   SUPABASE_SERVICE_ROLE_KEY; APP_ENV defaults to dev)
+scripts/start-web.sh inventory      # flutter run for the web frontend (injects API_BASE_URL)
+```
+
+Overridable via environment: `MAIN_CLASS`, `API_BASE_URL`, `DEVICE` (`chrome` default; use
+`web-server` for a plain URL), `WEB_PORT` (default `3000`).
+
 ## Schema management (CLI)
 
 `SchemaTool` runs Liquibase against the shared database from the command line — create/update,

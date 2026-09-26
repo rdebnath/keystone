@@ -18,7 +18,7 @@ class AdminConfigLoaderTest {
         assertThat(config.environment()).isEqualTo("test");
         assertThat(config.supabase().url()).isEqualTo("https://test.supabase.co");
         assertThat(config.supabase().serviceRoleKey()).isEqualTo("service-role");
-        assertThat(config.security().issuer()).isEqualTo("https://test.supabase.co");
+        assertThat(config.security().issuer()).isEqualTo("https://test.supabase.co/auth/v1");
         assertThat(config.security().audience()).isEqualTo("authenticated");
         assertThat(config.security().jwksUrl()).isEqualTo("https://test.supabase.co/auth/v1/.well-known/jwks.json");
         assertThat(config.bootstrap().adminUsername()).isEqualTo("admin");
