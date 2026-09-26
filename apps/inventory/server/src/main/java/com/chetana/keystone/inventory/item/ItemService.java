@@ -12,7 +12,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
-import static com.chetana.keystone.inventory.jooq.Tables.ITEMS;
+import static com.chetana.keystone.inventory.jooq.inventory.Tables.ITEMS;
 
 @Singleton
 public final class ItemService {

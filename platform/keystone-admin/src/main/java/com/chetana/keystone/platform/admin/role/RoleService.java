@@ -18,10 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static com.chetana.keystone.platform.admin.jooq.Tables.PERMISSIONS;
-import static com.chetana.keystone.platform.admin.jooq.Tables.ROLE_PERMISSIONS;
-import static com.chetana.keystone.platform.admin.jooq.Tables.ROLES;
-import static com.chetana.keystone.platform.admin.jooq.Tables.USER_ROLES;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.PERMISSIONS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.ROLE_PERMISSIONS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.ROLES;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USER_ROLES;
 
 /**
  * Use-case service for role management (platform- and tenant-scoped catalog).

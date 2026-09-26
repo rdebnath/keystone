@@ -8,6 +8,9 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
+import org.jooq.conf.MappedSchema;
+import org.jooq.conf.RenderMapping;
+import org.jooq.conf.Settings;
 import org.jooq.impl.DSL;
 
 import javax.sql.DataSource;
@@ -59,7 +62,7 @@ public final class DataModule extends AbstractModule {
     @Singleton
     @Primary
     DSLContext primaryDslContext(@Primary DataSource dataSource) {
-        return DSL.using(dataSource, SQLDialect.POSTGRES);
+        return DSL.using(dataSource, SQLDialect.POSTGRES, renderSettings());
     }
 
     @Provides
@@ -76,7 +79,7 @@ public final class DataModule extends AbstractModule {
     @Singleton
     @Replica
     DSLContext replicaDslContext(@Replica DataSource dataSource) {
-        return DSL.using(dataSource, SQLDialect.POSTGRES);
+        return DSL.using(dataSource, SQLDialect.POSTGRES, renderSettings());
     }
 
     private static DataSource dataSource(DatabaseConfig config, boolean readOnly) {
@@ -94,5 +97,22 @@ public final class DataModule extends AbstractModule {
             hikari.setSchema(config.schema());
         }
         return new HikariDataSource(hikari);
+    }
+
+    /**
+     * Defensive fallback: renders any *unqualified* table reference as {@code "schema"."table"}.
+     * Generated tables already carry their own schema (so cross-schema joins render correctly), but
+     * this mapping guarantees unqualified SQL never silently depends on the connection's
+     * {@code search_path}, which Supabase's PgBouncer (transaction mode, port 6543) does not
+     * reliably maintain across transactions.
+     */
+    private Settings renderSettings() {
+        String schema = primary.schema();
+        if (schema == null || schema.isBlank()) {
+            return new Settings();
+        }
+        return new Settings().withRenderMapping(
+                new RenderMapping().withSchemata(
+                        new MappedSchema().withInput("").withOutput(schema)));
     }
 }

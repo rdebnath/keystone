@@ -6,6 +6,9 @@
                             https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
     <changeSet id="0001-initial-schema" author="keystone">
+        <!-- The raw SQL below is schema-qualified for the offline jOOQ codegen. Whitelist the
+             checksum computed before that qualification so databases migrated earlier stay valid. -->
+        <validCheckSum>9:6cf5533e0e073211ac865e3b7d6b1ca2</validCheckSum>
         <!-- Idempotency guard: local docker init (docker/initdb/init.sql) may have already created this. -->
         <preConditions onFail="MARK_RAN">
             <not>
@@ -111,8 +114,8 @@
         <addPrimaryKey tableName="user_roles" columnNames="user_id, role_id"/>
 
         <sql>
-            ALTER TABLE roles ADD CONSTRAINT chk_roles_scope CHECK (scope IN ('PLATFORM','TENANT'));
-            ALTER TABLE permissions ADD CONSTRAINT chk_permissions_scope CHECK (scope IN ('PLATFORM','TENANT'));
+            ALTER TABLE ${database.defaultSchemaName}.roles ADD CONSTRAINT chk_roles_scope CHECK (scope IN ('PLATFORM','TENANT'));
+            ALTER TABLE ${database.defaultSchemaName}.permissions ADD CONSTRAINT chk_permissions_scope CHECK (scope IN ('PLATFORM','TENANT'));
         </sql>
     </changeSet>
 </databaseChangeLog>

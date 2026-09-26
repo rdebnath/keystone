@@ -11,7 +11,7 @@ import com.chetana.keystone.platform.admin.supabase.SupabaseAdminClient;
 
 import java.util.UUID;
 
-import static com.chetana.keystone.platform.admin.jooq.Tables.USERS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USERS;
 
 /**
  * Backend-proxied login: parses {@code username@tenantid}, resolves the tenant and user, then

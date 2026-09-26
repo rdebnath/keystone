@@ -221,6 +221,14 @@ Flutter client          Supabase Realtime              Java backend
   compiled into the module.
 - This keeps codegen deterministic and CI-friendly: no database connection is required to
   build.
+- The changelog is rendered with the module's schema (Liquibase `defaultSchemaName` +
+  `outputDefaultSchema=true`), so generated tables are **schema-qualified**
+  (`"platform"."users"`, `"inventory"."items"`) and jOOQ renders `"schema"."table"` — SQL never
+  depends on the connection's `search_path`.
+- Schema-qualified SQL is deliberate: Supabase's PgBouncer (transaction mode, port 6543) does
+  not reliably persist `SET SESSION search_path`, so relying on it breaks multi-schema access.
+  Raw `<sql>` in a changelog must be schema-qualified with `${database.defaultSchemaName}` to
+  keep the rendered DDL consistent.
 
 ## 7. Build, Packaging & Deployment
 

@@ -9,7 +9,7 @@ import com.chetana.keystone.platform.admin.data.Platform;
 
 import java.util.UUID;
 
-import static com.chetana.keystone.platform.admin.jooq.Tables.TENANTS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.TENANTS;
 
 /**
  * Resolves a tenant slug to its id. The reserved slug {@code keystone} resolves to {@code null},

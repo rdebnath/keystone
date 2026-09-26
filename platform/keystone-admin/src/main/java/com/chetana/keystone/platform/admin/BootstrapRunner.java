@@ -18,11 +18,11 @@ import java.util.UUID;
 
 import static com.chetana.keystone.platform.admin.PermissionCatalog.PLATFORM_ADMIN_ROLE;
 import static com.chetana.keystone.platform.admin.PermissionCatalog.WILDCARD;
-import static com.chetana.keystone.platform.admin.jooq.Tables.PERMISSIONS;
-import static com.chetana.keystone.platform.admin.jooq.Tables.ROLE_PERMISSIONS;
-import static com.chetana.keystone.platform.admin.jooq.Tables.ROLES;
-import static com.chetana.keystone.platform.admin.jooq.Tables.USER_ROLES;
-import static com.chetana.keystone.platform.admin.jooq.Tables.USERS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.PERMISSIONS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.ROLE_PERMISSIONS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.ROLES;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USER_ROLES;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USERS;
 
 /**
  * Idempotent first-user bootstrap, run once at startup: seeds the permission catalog and the

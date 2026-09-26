@@ -288,6 +288,11 @@ behind the ports defined in `application`.
 - **Code generation is the source of truth**: jOOQ generates table/record/sequence types
   **offline from the Liquibase changelog** (rendered to DDL), never from a live database
   (see `docs/ARCHITECTURE.md` §6.2).
+- **Schema-qualified tables**: generated types carry their schema (from the changelog's
+  `defaultSchemaName`), so jOOQ renders `"schema"."table"`. Cross-schema joins work without
+  special handling, and SQL never depends on the connection `search_path` (Supabase's PgBouncer
+  does not reliably maintain it). `DataModule`/`PlatformDataModule` also map unqualified
+  references to the module's schema as a defensive fallback.
 - **Type-safe DSL**: build queries with jOOQ's `DSLContext` and the generated classes — no
   hand-written SQL strings outside `persistence`, no raw JDBC.
 - **Map to records**: project results into immutable records (`record.into(MyDto.class)` or
@@ -319,12 +324,15 @@ behind the ports defined in `application`.
 ### Liquibase changelogs
 
 - **One master changelog** that includes versioned, ordered changelog files per change or
-  feature (`db/changelog/…`). Never edit an applied changeset; add a new one.
+  feature (`db/changelog/…`). Prefer adding a new changeset over editing an applied one; if an
+  applied changeset must change, whitelist its old checksum with `<validCheckSum>`.
 - Each changeset is **idempotent** with a stable `id` + `author`; use `preConditions` where a
   guard is needed. Prefer forward-only (no destructive rollbacks without review).
 - Changelogs are the **single source of truth** for both the database and jOOQ codegen
   (rendered to DDL offline — see `docs/ARCHITECTURE.md` §6.2). No ad-hoc DDL outside
   Liquibase.
+- **Raw `<sql>` blocks** must be schema-qualified with `${database.defaultSchemaName}` so the
+  offline-rendered DDL stays consistent with the schema-qualified generated code.
 
 ### Connection pool (HikariCP)
 

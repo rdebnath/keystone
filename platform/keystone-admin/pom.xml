@@ -124,7 +124,8 @@
                     <changeLogFile>src/main/resources/admin-db/changelog/db.changelog-master.xml</changeLogFile>
                     <url>offline:postgresql</url>
                     <migrationSqlOutputFile>${project.build.directory}/generated-ddl/schema.sql</migrationSqlOutputFile>
-                    <outputDefaultSchema>public</outputDefaultSchema>
+                    <defaultSchemaName>platform</defaultSchemaName>
+                    <outputDefaultSchema>true</outputDefaultSchema>
                 </configuration>
                 <executions>
                     <execution>

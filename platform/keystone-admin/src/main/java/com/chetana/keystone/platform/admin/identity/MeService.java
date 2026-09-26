@@ -12,7 +12,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 
-import static com.chetana.keystone.platform.admin.jooq.Tables.USERS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USERS;
 
 /**
  * Returns the authenticated caller's profile and effective permissions, and handles their

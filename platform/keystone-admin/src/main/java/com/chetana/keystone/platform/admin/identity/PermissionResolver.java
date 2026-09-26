@@ -9,10 +9,10 @@ import org.jooq.Condition;
 import java.util.Set;
 import java.util.UUID;
 
-import static com.chetana.keystone.platform.admin.jooq.Tables.PERMISSIONS;
-import static com.chetana.keystone.platform.admin.jooq.Tables.ROLE_PERMISSIONS;
-import static com.chetana.keystone.platform.admin.jooq.Tables.USER_ROLES;
-import static com.chetana.keystone.platform.admin.jooq.Tables.USERS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.PERMISSIONS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.ROLE_PERMISSIONS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USER_ROLES;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USERS;
 
 /**
  * Resolves a user's effective permission codes as {@code user_roles ⋈ role_permissions}, filtered

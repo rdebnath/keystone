@@ -15,9 +15,9 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
-import static com.chetana.keystone.platform.admin.jooq.Tables.TENANTS;
-import static com.chetana.keystone.platform.admin.jooq.Tables.USER_ROLES;
-import static com.chetana.keystone.platform.admin.jooq.Tables.USERS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.TENANTS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USER_ROLES;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USERS;
 
 /**
  * Use-case service for tenant (customer) management.

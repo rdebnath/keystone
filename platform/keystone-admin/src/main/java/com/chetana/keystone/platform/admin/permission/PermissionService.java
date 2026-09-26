@@ -15,8 +15,8 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
-import static com.chetana.keystone.platform.admin.jooq.Tables.PERMISSIONS;
-import static com.chetana.keystone.platform.admin.jooq.Tables.ROLE_PERMISSIONS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.PERMISSIONS;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.ROLE_PERMISSIONS;
 
 /**
  * Use-case service for the permission catalog (platform- and tenant-scoped).
