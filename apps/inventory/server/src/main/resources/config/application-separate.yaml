@@ -1,8 +1,0 @@
-# "Separate database per app" deployment example: blank schema (each app owns its own database).
-database:
-  url: jdbc:postgresql://localhost:5432/inventory
-  username: keystone
-  password: keystone   # throwaway local-only credential
-  schema: ""           # blank = default (public) schema of the database named in `url`
-  read:
-    url: jdbc:postgresql://localhost:5432/inventory   # read/write on one instance (== database.url)

@@ -19,6 +19,9 @@ database:
     password: ""         # blank = database.password; never commit a real value
     maxPoolSize: ""      # blank = database.maxPoolSize
 
+platform:
+  schema: "platform"     # schema in the shared DB where the hosted platform admin console lives
+
 server:
   port: 8080             # Cloud Run injects PORT, which overrides this
 

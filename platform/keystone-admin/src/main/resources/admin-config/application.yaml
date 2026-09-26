@@ -1,21 +1,8 @@
 # Base defaults shared by every environment (platform admin console library).
 #
-# Secrets (database.password, supabase.serviceRoleKey) are intentionally left empty here and in
-# per-environment files. They are supplied at runtime via environment variables
-# (Cloud Run -> Secret Manager) or, for local development, admin-config/application-local.yaml.
-
-database:
-  url: ""                # required per environment (DB_URL)
-  username: ""           # required per environment (DB_USERNAME)
-  password: ""           # required at runtime (DB_PASSWORD); see admin-config/application-local.yaml
-  maxPoolSize: 10
-  schema: "platform"     # the platform schema in the shared database
-  read:                  # read target: a read replica, or the primary (read/write on one instance)
-    url: ""              # required per environment (admin-config/application-{env}.yaml); set equal to
-                         # database.url for read/write on one instance, or to a replica URL to enable a replica
-    username: ""         # blank = database.username
-    password: ""         # blank = database.password; never commit a real value
-    maxPoolSize: ""      # blank = database.maxPoolSize
+# Secrets (supabase.serviceRoleKey) and OIDC settings are intentionally left empty here; they are
+# supplied at runtime via environment variables (Cloud Run -> Secret Manager). The platform's
+# database connection is inherited from the hosting application (same database, `platform` schema).
 
 supabase:
   url: ""                # Supabase project URL (SUPABASE_URL)

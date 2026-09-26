@@ -13,6 +13,7 @@ import java.util.Objects;
 public record AppConfig(
         String environment,
         Database database,
+        Platform platform,
         Server server,
         Realtime realtime,
         Security security) {
@@ -20,6 +21,7 @@ public record AppConfig(
     public AppConfig {
         Objects.requireNonNull(environment, "environment");
         Objects.requireNonNull(database, "database");
+        Objects.requireNonNull(platform, "platform");
         Objects.requireNonNull(server, "server");
         Objects.requireNonNull(realtime, "realtime");
         Objects.requireNonNull(security, "security");
@@ -38,6 +40,9 @@ public record AppConfig(
         }
         if (database.read().url().isBlank()) {
             throw new IllegalArgumentException("database.read.url is required (set in application-{env}.yaml)");
+        }
+        if (platform.schema().isBlank()) {
+            throw new IllegalArgumentException("platform.schema must not be blank (set PLATFORM_SCHEMA or application-{env}.yaml)");
         }
         if (server.port() < 1 || server.port() > 65535) {
             throw new IllegalArgumentException("server.port must be in [1, 65535]: " + server.port());
@@ -64,6 +69,12 @@ public record AppConfig(
             Objects.requireNonNull(url, "url");
             Objects.requireNonNull(username, "username");
             Objects.requireNonNull(password, "password");
+        }
+    }
+
+    public record Platform(String schema) {
+        public Platform {
+            Objects.requireNonNull(schema, "schema");
         }
     }
 

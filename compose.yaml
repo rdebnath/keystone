@@ -13,7 +13,7 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: keystone
+      POSTGRES_DB: postgres
       POSTGRES_USER: keystone
       POSTGRES_PASSWORD: keystone
     ports:

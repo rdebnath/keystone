@@ -81,7 +81,7 @@ Apps persist to a shared PostgreSQL database (Supabase-managed) isolated by **sc
 choice is per-environment configuration (`DB_URL` + optional `DB_SCHEMA`). Reads are routed via a
 required `database.read.url` (configured in `application-{env}.yaml`): set it equal to
 `database.url` for read/write on one instance, or to a read-replica URL. For local development,
-`docker compose up -d` starts one PostgreSQL (database `keystone`) and initializes the `inventory`
+`docker compose up -d` starts one PostgreSQL (database `postgres`) and initializes the `inventory`
 and `platform` schemas + tables on first start (via `docker/initdb/init.sql`, generated from the
 Liquibase changelogs). The app still migrates idempotently at startup (and `SchemaTool migrate`
 works against it too); Testcontainers also needs Docker for the integration tests.

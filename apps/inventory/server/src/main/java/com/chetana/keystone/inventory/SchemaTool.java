@@ -4,7 +4,6 @@ import com.chetana.keystone.data.DatabaseConfig;
 import com.chetana.keystone.inventory.config.AppConfig;
 import com.chetana.keystone.inventory.config.ConfigLoader;
 import com.chetana.keystone.platform.admin.AdminMigrationRunner;
-import com.chetana.keystone.platform.admin.config.AdminConfigLoader;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -65,7 +64,12 @@ public final class SchemaTool {
                     inventory.database().password(),
                     inventory.database().maxPoolSize(),
                     inventory.database().schema());
-            DatabaseConfig platformDb = AdminConfigLoader.databaseConfig();
+            DatabaseConfig platformDb = DatabaseConfig.of(
+                    inventory.database().url(),
+                    inventory.database().username(),
+                    inventory.database().password(),
+                    inventory.database().maxPoolSize(),
+                    inventory.platform().schema());
 
             run(command, inventoryDb, platformDb);
             System.out.println("SchemaTool " + command.name().toLowerCase(Locale.ROOT)

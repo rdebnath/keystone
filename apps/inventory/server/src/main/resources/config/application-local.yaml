@@ -1,8 +1,8 @@
-# Local development. Matches compose.yaml (PostgreSQL on localhost, `keystone` database, `inventory` schema).
+# Local development. Matches compose.yaml (PostgreSQL on localhost, `postgres` database, `inventory` schema).
 database:
-  url: jdbc:postgresql://localhost:5432/keystone
+  url: jdbc:postgresql://localhost:5432/postgres
   username: keystone
   password: keystone   # throwaway local-only credential
   schema: inventory    # shared DB -> isolate by schema
   read:
-    url: jdbc:postgresql://localhost:5432/keystone   # read/write on one instance (== database.url)
+    url: jdbc:postgresql://localhost:5432/postgres   # read/write on one instance (== database.url)

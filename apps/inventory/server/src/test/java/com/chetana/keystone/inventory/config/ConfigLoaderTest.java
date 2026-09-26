@@ -14,13 +14,14 @@ class ConfigLoaderTest {
         AppConfig config = ConfigLoader.load(Map.of());
 
         assertThat(config.environment()).isEqualTo("local");
-        assertThat(config.database().url()).isEqualTo("jdbc:postgresql://localhost:5432/keystone");
+        assertThat(config.database().url()).isEqualTo("jdbc:postgresql://localhost:5432/postgres");
         assertThat(config.database().username()).isEqualTo("keystone");
         assertThat(config.database().password()).isEqualTo("keystone");
         assertThat(config.database().maxPoolSize()).isEqualTo(10);
         assertThat(config.database().schema()).isEqualTo("inventory");
+        assertThat(config.platform().schema()).isEqualTo("platform");
         // read target resolves from yaml; blank falls back to the primary (read/write on one instance).
-        assertThat(config.database().read().url()).isEqualTo("jdbc:postgresql://localhost:5432/keystone");
+        assertThat(config.database().read().url()).isEqualTo("jdbc:postgresql://localhost:5432/postgres");
         assertThat(config.database().read().username()).isEqualTo("keystone");
         assertThat(config.database().read().password()).isEqualTo("keystone");
         assertThat(config.database().read().maxPoolSize()).isEqualTo(10);
@@ -41,7 +42,7 @@ class ConfigLoaderTest {
         assertThat(config.database().username()).isEqualTo("keystone");
         assertThat(config.database().schema()).isEqualTo("inventory");
         // read target is yaml-only (not affected by the DB_URL env override).
-        assertThat(config.database().read().url()).isEqualTo("jdbc:postgresql://localhost:5432/keystone");
+        assertThat(config.database().read().url()).isEqualTo("jdbc:postgresql://localhost:5432/postgres");
         assertThat(config.database().read().password()).isEqualTo("s3cret");
         assertThat(config.database().read().username()).isEqualTo("keystone");
     }
@@ -53,8 +54,8 @@ class ConfigLoaderTest {
                 "DB_PASSWORD", "dev-secret"));
 
         assertThat(config.environment()).isEqualTo("dev");
-        assertThat(config.database().url()).isEqualTo("jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:6543/keystone");
-        assertThat(config.database().username()).isEqualTo("deployment@chetanatech.com");
+        assertThat(config.database().url()).isEqualTo("jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres");
+        assertThat(config.database().username()).isEqualTo("postgres.gxswbqcbxorfiinfdqke");
         assertThat(config.database().password()).isEqualTo("dev-secret");
         assertThat(config.database().schema()).isEqualTo("inventory");
     }
@@ -66,10 +67,19 @@ class ConfigLoaderTest {
                 "DB_PASSWORD", "demo-secret"));
 
         assertThat(config.environment()).isEqualTo("demo");
-        assertThat(config.database().url()).isEqualTo("jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:6543/keystone");
-        assertThat(config.database().username()).isEqualTo("deployment@chetanatech.com");
+        assertThat(config.database().url()).isEqualTo("jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres");
+        assertThat(config.database().username()).isEqualTo("postgres.gxswbqcbxorfiinfdqke");
         assertThat(config.database().password()).isEqualTo("demo-secret");
         assertThat(config.database().schema()).isEqualTo("inventory");
+    }
+
+    @Test
+    void should_override_platform_schema_with_environment_variable() {
+        AppConfig config = ConfigLoader.load(Map.of(
+                "APP_ENV", "local",
+                "PLATFORM_SCHEMA", "custom-platform"));
+
+        assertThat(config.platform().schema()).isEqualTo("custom-platform");
     }
 
     @Test
@@ -78,14 +88,5 @@ class ConfigLoaderTest {
         assertThatThrownBy(() -> ConfigLoader.load(Map.of("APP_ENV", "demo")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("database.password");
-    }
-
-    @Test
-    void should_allow_blank_schema_for_separate_database() {
-        // A blank schema means "use the database's default (public) schema" — each app in its own database.
-        AppConfig config = ConfigLoader.load(Map.of("APP_ENV", "separate"));
-
-        assertThat(config.database().schema()).isEqualTo("");
-        assertThat(config.database().read().url()).isEqualTo("jdbc:postgresql://localhost:5432/inventory");
     }
 }

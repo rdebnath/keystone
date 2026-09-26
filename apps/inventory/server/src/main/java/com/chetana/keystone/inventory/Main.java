@@ -43,14 +43,14 @@ public final class Main {
                 config.database().password(),
                 config.database().maxPoolSize(),
                 config.database().schema());
-        DatabaseConfig inventoryRead = readDatabase(config.database());
+        DatabaseConfig inventoryRead = readDatabase(config.database(), config.database().schema());
         DatabaseConfig platformDb = DatabaseConfig.of(
-                adminConfig.database().url(),
-                adminConfig.database().username(),
-                adminConfig.database().password(),
-                adminConfig.database().maxPoolSize(),
-                adminConfig.database().schema());
-        DatabaseConfig platformRead = readDatabase(adminConfig.database());
+                config.database().url(),
+                config.database().username(),
+                config.database().password(),
+                config.database().maxPoolSize(),
+                config.platform().schema());
+        DatabaseConfig platformRead = readDatabase(config.database(), config.platform().schema());
 
         Injector injector = Guice.createInjector(
                 Stage.PRODUCTION,
@@ -72,13 +72,8 @@ public final class Main {
     }
 
     /** Maps a resolved read target to a {@link DatabaseConfig}; the same URL as the primary aliases it. */
-    private static DatabaseConfig readDatabase(AppConfig.Database database) {
+    private static DatabaseConfig readDatabase(AppConfig.Database database, String schema) {
         AppConfig.Read read = database.read();
-        return DatabaseConfig.of(read.url(), read.username(), read.password(), read.maxPoolSize(), database.schema());
-    }
-
-    private static DatabaseConfig readDatabase(AdminConfig.Database database) {
-        AdminConfig.Read read = database.read();
-        return DatabaseConfig.of(read.url(), read.username(), read.password(), read.maxPoolSize(), database.schema());
+        return DatabaseConfig.of(read.url(), read.username(), read.password(), read.maxPoolSize(), schema);
     }
 }

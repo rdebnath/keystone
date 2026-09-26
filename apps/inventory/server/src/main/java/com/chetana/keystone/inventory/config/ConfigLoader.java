@@ -46,6 +46,7 @@ public final class ConfigLoader {
         return new AppConfig(
                 environment,
                 database(env, overlay, base),
+                platform(env, overlay, base),
                 server(env, overlay, base),
                 realtime(env, overlay, base),
                 security(env, overlay, base));
@@ -78,6 +79,10 @@ public final class ConfigLoader {
     private static int fileInt(JsonNode overlay, JsonNode base, int fallback, String... path) {
         String value = fileValue(overlay, base, path);
         return value == null || value.isBlank() ? fallback : Integer.parseInt(value.trim());
+    }
+
+    private static AppConfig.Platform platform(Map<String, String> env, JsonNode overlay, JsonNode base) {
+        return new AppConfig.Platform(string(env, overlay, base, "PLATFORM_SCHEMA", "platform", "schema"));
     }
 
     private static AppConfig.Server server(Map<String, String> env, JsonNode overlay, JsonNode base) {

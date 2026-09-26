@@ -5,7 +5,7 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                             https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-    <changeSet id="0001-initial-schema" author="keystone">
+    <changeSet id="0001-initial-schema" author="rdebnath">
         <!-- Idempotency guard: local docker init (docker/initdb/init.sql) may have already created this. -->
         <preConditions onFail="MARK_RAN">
             <not>

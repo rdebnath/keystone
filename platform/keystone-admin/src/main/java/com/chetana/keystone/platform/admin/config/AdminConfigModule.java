@@ -17,7 +17,6 @@ public final class AdminConfigModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(AdminConfig.class).toInstance(config);
-        bind(AdminConfig.Database.class).toInstance(config.database());
         bind(AdminConfig.Supabase.class).toInstance(config.supabase());
         bind(AdminConfig.Security.class).toInstance(config.security());
         bind(AdminConfig.Bootstrap.class).toInstance(config.bootstrap());
