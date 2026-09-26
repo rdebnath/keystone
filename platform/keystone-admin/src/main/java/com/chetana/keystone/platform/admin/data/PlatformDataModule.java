@@ -91,6 +91,10 @@ public final class PlatformDataModule extends AbstractModule {
         hikari.setPassword(config.password());
         hikari.setMaximumPoolSize(config.maxPoolSize());
         hikari.setReadOnly(readOnly);
+        // Supabase's connection pooler (PgBouncer, transaction mode) does not support server-side
+        // prepared statements; force client-side prepared statements to avoid Liquibase's
+        // "prepared statement already exists" failures.
+        hikari.addDataSourceProperty("prepareThreshold", "0");
         if (config.schema() != null && !config.schema().isBlank()) {
             hikari.setSchema(config.schema());
         }

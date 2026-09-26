@@ -139,7 +139,7 @@ Supabase is used for two managed capabilities:
 
 1. **Database** — a managed PostgreSQL instance. Apps are isolated by **per-app schema**
    (`inventory`, `platform`, …) in a shared database, or by separate databases — the choice is
-   per-environment configuration (`DB_URL` + optional `DB_SCHEMA`). The Java service is the only
+   per-environment configuration (`database.url` + optional `database.schema`). The Java service is the only
    direct writer of its schema; the schema is applied via Liquibase changelogs.
 2. **Realtime** — Supabase Realtime provides the WebSocket broadcast infrastructure. It is
    **not** an application data store; it is the fan-out mechanism for live updates.
@@ -255,12 +255,15 @@ Flutter client          Supabase Realtime              Java backend
 
 ## 8. Configuration & Secrets
 
-- All environment-specific configuration is externalized via environment variables and,
-  where sensitive, **Google Secret Manager**.
-- Required secrets/values:
-  - Supabase PostgreSQL connection string (+ per-app `DB_SCHEMA`),
-  - Supabase Realtime endpoint + publish key/secret,
-  - OAuth2/OIDC issuer + audience (for token validation).
+- All environment-specific configuration lives in per-environment yaml files
+  (`application-{env}.yaml`, `admin-config/application-{env}.yaml`), selected by `APP_ENV`.
+- Only **secrets** are externalized via environment variables (Google Secret Manager → Cloud Run):
+  - Supabase PostgreSQL connection password (`DB_PASSWORD`),
+  - Supabase service-role key (`SUPABASE_SERVICE_ROLE_KEY`),
+  - Supabase Realtime service-role key (`REALTIME_SERVICE_ROLE_KEY`),
+  - bootstrap admin password (`BOOTSTRAP_ADMIN_PASSWORD`).
+- Non-secret values (URLs, usernames, schema names, OIDC issuer/audience/JWKS URL, port, context
+  path, CORS allowed origins) live in the yaml files, not the environment.
 - No secrets in source, images, or logs.
 
 ## 9. Identity, Tenancy & Authorization
@@ -345,7 +348,8 @@ user_roles       (user_id FK, role_id FK, tenant_id uuid NULL, PRIMARY KEY (user
 - **Error handling**: one global exception handler → RFC 9457 `application/problem+json`.
 - **Idempotency**: mutation endpoints and broadcast consumers tolerate retries/duplicates.
 - **Graceful shutdown**: honor Cloud Run's SIGTERM to drain in-flight requests.
-- **CORS**: enable for the Flutter web origin.
+- **CORS**: configured per environment via `cors.allowedOrigins` — wildcard `*` in dev for the
+  local Flutter web client, explicit origins in prod.
 
 ## 11. Key Decisions & Rationale
 

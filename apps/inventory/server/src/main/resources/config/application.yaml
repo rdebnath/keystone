@@ -1,13 +1,13 @@
 # Base defaults shared by every environment.
 #
-# Secrets (database.password, realtime.serviceRoleKey, security keys) are intentionally left
-# empty here and in per-environment files. They are supplied at runtime via environment
-# variables (Cloud Run -> Secret Manager) or, for local development, application-local.yaml.
+# Non-secret values are filled in per environment (application-{env}.yaml). Only secrets
+# (database.password, realtime.serviceRoleKey) are supplied at runtime via environment
+# variables (Cloud Run -> Secret Manager).
 
 database:
-  url: ""                # required per environment (DB_URL)
-  username: ""           # required per environment (DB_USERNAME)
-  password: ""           # required at runtime (DB_PASSWORD); see application-local.yaml
+  url: ""                # required per environment (set in application-{env}.yaml)
+  username: ""           # required per environment (set in application-{env}.yaml)
+  password: ""           # secret (DB_PASSWORD)
   maxPoolSize: 10
   schema: ""             # optional: blank = default (public) schema of the database named in `url`
                          #          (separate database per app); set to a value (e.g. "inventory")
@@ -23,11 +23,15 @@ platform:
   schema: "platform"     # schema in the shared DB where the hosted platform admin console lives
 
 server:
-  port: 8080             # Cloud Run injects PORT, which overrides this
+  port: 8080             # HTTP port (no environment override)
+  contextPath: /inventory  # URL prefix the app serves under (e.g. localhost:8080/inventory)
+
+cors:
+  allowedOrigins: []     # empty = CORS disabled; ["*"] = allow any origin (set per environment)
 
 realtime:
   endpoint: ""           # optional until Supabase Realtime is wired
-  serviceRoleKey: ""     # required when Realtime is enabled; never commit a real value
+  serviceRoleKey: ""     # secret (REALTIME_SERVICE_ROLE_KEY) when Realtime is enabled; never commit it
 
 security:
   issuer: ""             # optional until OIDC is wired

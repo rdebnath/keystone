@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Supabase Auth Admin API client (GoTrue) using the service-role key. The service-role key must
@@ -40,42 +41,7 @@ public final class SupabaseHttpAdminClient implements SupabaseAdminClient {
     }
 
     @Override
-    public String ensureUser(String email, String password) {
-        String existing = findUserByEmail(email);
-        if (existing != null) {
-            return existing;
-        }
-        return createUser(email, password);
-    }
-
-    private String findUserByEmail(String email) {
-        try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + ADMIN_USERS_PATH + "?page=1&per_page=100"))
-                    .header("apikey", serviceRoleKey)
-                    .header("Authorization", "Bearer " + serviceRoleKey)
-                    .timeout(Duration.ofSeconds(10))
-                    .GET()
-                    .build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() != 200) {
-                throw new IllegalStateException("Supabase admin list returned HTTP " + response.statusCode());
-            }
-            JsonNode users = objectMapper.readTree(response.body());
-            for (JsonNode user : users) {
-                if (email.equalsIgnoreCase(user.path("email").asText())) {
-                    return user.path("id").asText();
-                }
-            }
-            return null;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Supabase admin request interrupted", e);
-        } catch (IOException e) {
-            throw new IllegalStateException("Supabase admin request failed", e);
-        }
-    }
-
-    private String createUser(String email, String password) {
+    public String createUser(String email, String password) {
         try {
             Map<String, Object> body = Map.of(
                     "email", email,
@@ -89,8 +55,12 @@ public final class SupabaseHttpAdminClient implements SupabaseAdminClient {
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() >= 300) {
-                throw new ConflictException("Supabase user already exists or could not be created: " + email);
+            int status = response.statusCode();
+            if (status == 409) {
+                throw new ConflictException("Supabase user already exists: " + email);
+            }
+            if (status >= 300) {
+                throw new IllegalStateException("Supabase admin create returned HTTP " + status);
             }
             return objectMapper.readTree(response.body()).path("id").asText();
         } catch (InterruptedException e) {
@@ -99,6 +69,43 @@ public final class SupabaseHttpAdminClient implements SupabaseAdminClient {
         } catch (IOException e) {
             throw new IllegalStateException("Supabase admin request failed", e);
         }
+    }
+
+    @Override
+    public Optional<String> findSubByEmail(String email) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + ADMIN_USERS_PATH + "?page=1&per_page=100"))
+                    .header("apikey", serviceRoleKey)
+                    .header("Authorization", "Bearer " + serviceRoleKey)
+                    .timeout(Duration.ofSeconds(10))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new IllegalStateException("Supabase admin list returned HTTP " + response.statusCode());
+            }
+            JsonNode page = objectMapper.readTree(response.body());
+            return Optional.ofNullable(findSubInPage(page, email));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Supabase admin request interrupted", e);
+        } catch (IOException e) {
+            throw new IllegalStateException("Supabase admin request failed", e);
+        }
+    }
+
+    /**
+     * Extracts the Supabase user {@code id} whose email matches (case-insensitively) from a GoTrue
+     * "list users" response body ({@code { "users": [...] }}). Returns {@code null} when no user
+     * matches.
+     */
+    static String findSubInPage(JsonNode page, String email) {
+        for (JsonNode user : page.path("users")) {
+            if (email.equalsIgnoreCase(user.path("email").asText())) {
+                return user.path("id").asText();
+            }
+        }
+        return null;
     }
     @Override
     public Session login(String email, String password) {

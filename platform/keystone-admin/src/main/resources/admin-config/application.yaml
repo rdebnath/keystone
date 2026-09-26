@@ -1,19 +1,21 @@
 # Base defaults shared by every environment (platform admin console library).
 #
-# Secrets (supabase.serviceRoleKey) and OIDC settings are intentionally left empty here; they are
-# supplied at runtime via environment variables (Cloud Run -> Secret Manager). The platform's
-# database connection is inherited from the hosting application (same database, `platform` schema).
+# Non-secret values (Supabase URL, OIDC issuer/JWKS) are filled in per environment
+# (admin-config/application-{env}.yaml). Only secrets — the Supabase service-role key and the
+# bootstrap admin password — are supplied via environment variables (Cloud Run -> Secret Manager).
+# The platform's database connection is inherited from the hosting application (same database,
+# `platform` schema).
 
 supabase:
-  url: ""                # Supabase project URL (SUPABASE_URL)
+  url: ""                # Supabase project URL (set in admin-config/application-{env}.yaml)
   serviceRoleKey: ""     # server-only secret; never commit a real value (SUPABASE_SERVICE_ROLE_KEY)
 
 security:
-  issuer: ""             # Supabase project URL, e.g. https://<ref>.supabase.co (OIDC_ISSUER)
+  issuer: ""             # Supabase project URL, e.g. https://<ref>.supabase.co (set per environment)
   audience: "authenticated"   # Supabase Auth JWT audience
-  jwksUrl: ""            # e.g. https://<ref>.supabase.co/auth/v1/.well-known/jwks.json (OIDC_JWKS_URL)
+  jwksUrl: ""            # e.g. https://<ref>.supabase.co/auth/v1/.well-known/jwks.json (set per environment)
 
 bootstrap:
   adminUsername: "admin"        # login local-part of the first platform admin (admin@keystone)
   adminEmail: "admin@keystone.com"  # virtual/fake Supabase email; never delivered
-  adminPassword: "changeit"     # well-known initial password; forced change on first login
+  adminPassword: "changeit"     # well-known initial password; override via BOOTSTRAP_ADMIN_PASSWORD

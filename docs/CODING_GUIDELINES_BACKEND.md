@@ -188,16 +188,18 @@ image (the frontend is the exception — it uses `--dart-define` at build time).
 
 - Each application owns its config under `<app>/server/src/main/resources/config/`:
   `application.yaml` (base defaults) and `application-{env}.yaml` (per-environment overrides).
-- `APP_ENV` (default `local`) selects the environment file.
-- **Resolution order (highest precedence wins):** environment variable →
-  `application-{env}.yaml` → `application.yaml` → code default.
+  The platform admin console does the same under `admin-config/`.
+- `APP_ENV` (default `dev`) selects the environment file.
+- **Resolution order (highest precedence wins):** secret environment variable →
+  `application-{env}.yaml` → `application.yaml` → code default. Non-secret values are resolved
+  **from yaml only** — environment variables override *secrets*, nothing else.
 - Config is one immutable `AppConfig` record with nested records per concern (database, server,
   realtime, security), resolved by a `ConfigLoader` and bound via a `ConfigModule`
   (`bind(AppConfig.class).toInstance(...)` plus each slice). Services `@Inject` the slice they
   need, not the whole config.
 - **Secrets never live in files or the repo** — `database.password`, `realtime.serviceRoleKey`,
-  and OIDC keys are supplied via environment variables (Cloud Run → Secret Manager). The only
-  exception is `application-local.yaml`, which may hold throwaway local-only credentials.
+  `supabase.serviceRoleKey`, and the bootstrap admin password are supplied via environment
+  variables (Cloud Run → Secret Manager).
 - The same image ships to every environment; only `APP_ENV` and secrets differ per deployment.
 
 ## 6. Guice — Dependency Injection & Wiring

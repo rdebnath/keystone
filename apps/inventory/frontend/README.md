@@ -15,7 +15,7 @@ See `docs/CODING_GUIDELINES_FRONTEND.md`.
 Build-time configuration is injected via `--dart-define`:
 
 ```bash
-flutter run --dart-define=API_BASE_URL=http://localhost:8080
+flutter run --dart-define=API_BASE_URL=http://localhost:8080/inventory
 ```
 
 The backend URL is public (it ships in the client bundle); no service-role key ever appears here.

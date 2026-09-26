@@ -125,7 +125,6 @@
                     <url>offline:postgresql</url>
                     <migrationSqlOutputFile>${project.build.directory}/generated-ddl/schema.sql</migrationSqlOutputFile>
                     <outputDefaultSchema>public</outputDefaultSchema>
-                    <promptOnNonLocalDatabase>false</promptOnNonLocalDatabase>
                 </configuration>
                 <executions>
                     <execution>

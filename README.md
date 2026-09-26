@@ -41,15 +41,21 @@ other.
 mvn clean verify
 ```
 
-## Run an application (local)
+## Run an application
 
-Build the jar and run the app's Guice `Main` (requires a reachable PostgreSQL):
+Build the jar and run the app's Guice `Main` against the remote Supabase Postgres (selected by
+`APP_ENV`, default `dev`); it requires the `DB_PASSWORD` secret (and, for the admin console,
+`SUPABASE_SERVICE_ROLE_KEY`):
 
 ```bash
 mvn -pl apps/inventory/server -am package
 mvn -pl apps/inventory/server dependency:build-classpath -Dmdep.outputFile=target/classpath.txt
 java -cp "apps/inventory/server/target/classes:$(cat apps/inventory/server/target/classpath.txt)" com.chetana.keystone.inventory.Main
 ```
+
+The server listens on port `8080` and serves every route under the `/inventory` context path
+(e.g. `http://localhost:8080/inventory/api/v1/...`). The Flutter web client points its
+`API_BASE_URL` at `http://localhost:8080/inventory`.
 
 ## Schema management (CLI)
 
@@ -63,8 +69,8 @@ java -cp "apps/inventory/server/target/classes:$(cat apps/inventory/server/targe
   com.chetana.keystone.inventory.SchemaTool migrate   # or: drop | reset
 ```
 
-It uses the same `APP_ENV`/`DB_PASSWORD` configuration as the server (default `local`); Supabase/OIDC
-variables are not required. `drop` and `reset` are destructive (`DROP SCHEMA … CASCADE`).
+It uses the same `APP_ENV`/`DB_PASSWORD` configuration as the server (default `dev`); Supabase/OIDC
+configuration is not required. `drop` and `reset` are destructive (`DROP SCHEMA … CASCADE`).
 
 ## Container image (Cloud Run)
 
@@ -78,13 +84,11 @@ mvn -pl apps/inventory/server -am jib:build -Djib.to.image=<registry>/inventory
 
 Apps persist to a shared PostgreSQL database (Supabase-managed) isolated by **schema**
 (`inventory`, `platform`) — or to their own database when `database.schema` is left blank. The
-choice is per-environment configuration (`DB_URL` + optional `DB_SCHEMA`). Reads are routed via a
+choice is per-environment configuration (`database.url` + optional `database.schema`). Reads are routed via a
 required `database.read.url` (configured in `application-{env}.yaml`): set it equal to
-`database.url` for read/write on one instance, or to a read-replica URL. For local development,
-`docker compose up -d` starts one PostgreSQL (database `postgres`) and initializes the `inventory`
-and `platform` schemas + tables on first start (via `docker/initdb/init.sql`, generated from the
-Liquibase changelogs). The app still migrates idempotently at startup (and `SchemaTool migrate`
-works against it too); Testcontainers also needs Docker for the integration tests.
+`database.url` for read/write on one instance, or to a read-replica URL. The app migrates
+idempotently at startup, and `SchemaTool migrate` works against the same database. Testcontainers
+needs Docker for the integration tests.
 
 ## JDK pinning
 
@@ -100,5 +104,5 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 25)"
 - Backend guidelines: `docs/CODING_GUIDELINES_BACKEND.md`.
 - Build configuration lives in each module's `pom.xml`.
 - Per-app environment configuration lives in `<app>/server/src/main/resources/config/`
-  (`application.yaml` + `application-{env}.yaml`), selected by `APP_ENV` and overridable by
-  environment variables (see `docs/CODING_GUIDELINES_BACKEND.md` §5).
+  (`application.yaml` + `application-{env}.yaml`), selected by `APP_ENV`; only secrets are
+  overridable by environment variables (see `docs/CODING_GUIDELINES_BACKEND.md` §5).

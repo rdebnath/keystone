@@ -25,22 +25,22 @@ public record AdminConfig(
             throw new IllegalArgumentException("environment must not be blank");
         }
         if (supabase.url().isBlank()) {
-            throw new IllegalArgumentException("supabase.url is required (set SUPABASE_URL)");
+            throw new IllegalArgumentException("supabase.url is required (set in admin-config/application-{env}.yaml)");
         }
         if (supabase.serviceRoleKey().isBlank()) {
             throw new IllegalArgumentException("supabase.serviceRoleKey is required (set SUPABASE_SERVICE_ROLE_KEY)");
         }
         if (security.issuer().isBlank()) {
-            throw new IllegalArgumentException("security.issuer is required (set OIDC_ISSUER)");
+            throw new IllegalArgumentException("security.issuer is required (set in admin-config/application-{env}.yaml)");
         }
         if (security.jwksUrl().isBlank()) {
-            throw new IllegalArgumentException("security.jwksUrl is required (set OIDC_JWKS_URL)");
+            throw new IllegalArgumentException("security.jwksUrl is required (set in admin-config/application-{env}.yaml)");
         }
         if (bootstrap.adminUsername().isBlank()) {
-            throw new IllegalArgumentException("bootstrap.adminUsername is required (set BOOTSTRAP_ADMIN_USERNAME)");
+            throw new IllegalArgumentException("bootstrap.adminUsername is required (set in admin-config/application-{env}.yaml)");
         }
         if (bootstrap.adminEmail().isBlank()) {
-            throw new IllegalArgumentException("bootstrap.adminEmail is required (set BOOTSTRAP_ADMIN_EMAIL)");
+            throw new IllegalArgumentException("bootstrap.adminEmail is required (set in admin-config/application-{env}.yaml)");
         }
         if (bootstrap.adminPassword().isBlank()) {
             throw new IllegalArgumentException("bootstrap.adminPassword is required (set BOOTSTRAP_ADMIN_PASSWORD)");

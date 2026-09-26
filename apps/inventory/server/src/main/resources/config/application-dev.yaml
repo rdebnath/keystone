@@ -6,3 +6,6 @@ database:
   schema: inventory    # shared DB -> isolate by schema
   read:
     url: jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres   # read/write on one instance (== database.url)
+
+cors:
+  allowedOrigins: ["*"]  # dev: allow the local Flutter web dev server (any localhost port)

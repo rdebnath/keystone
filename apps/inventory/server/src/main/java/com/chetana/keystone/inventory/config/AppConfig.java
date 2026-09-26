@@ -1,5 +1,6 @@
 package com.chetana.keystone.inventory.config;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -15,6 +16,7 @@ public record AppConfig(
         Database database,
         Platform platform,
         Server server,
+        Cors cors,
         Realtime realtime,
         Security security) {
 
@@ -23,6 +25,7 @@ public record AppConfig(
         Objects.requireNonNull(database, "database");
         Objects.requireNonNull(platform, "platform");
         Objects.requireNonNull(server, "server");
+        Objects.requireNonNull(cors, "cors");
         Objects.requireNonNull(realtime, "realtime");
         Objects.requireNonNull(security, "security");
 
@@ -30,22 +33,25 @@ public record AppConfig(
             throw new IllegalArgumentException("environment must not be blank");
         }
         if (database.url().isBlank()) {
-            throw new IllegalArgumentException("database.url is required (set DB_URL or application-{env}.yaml)");
+            throw new IllegalArgumentException("database.url is required (set in application-{env}.yaml)");
         }
         if (database.username().isBlank()) {
-            throw new IllegalArgumentException("database.username is required (set DB_USERNAME or application-{env}.yaml)");
+            throw new IllegalArgumentException("database.username is required (set in application-{env}.yaml)");
         }
         if (database.password().isBlank()) {
-            throw new IllegalArgumentException("database.password is required (set DB_PASSWORD or application-local.yaml)");
+            throw new IllegalArgumentException("database.password is required (set DB_PASSWORD)");
         }
         if (database.read().url().isBlank()) {
             throw new IllegalArgumentException("database.read.url is required (set in application-{env}.yaml)");
         }
         if (platform.schema().isBlank()) {
-            throw new IllegalArgumentException("platform.schema must not be blank (set PLATFORM_SCHEMA or application-{env}.yaml)");
+            throw new IllegalArgumentException("platform.schema must not be blank (set in application-{env}.yaml)");
         }
         if (server.port() < 1 || server.port() > 65535) {
             throw new IllegalArgumentException("server.port must be in [1, 65535]: " + server.port());
+        }
+        if (!server.contextPath().isBlank() && !server.contextPath().startsWith("/")) {
+            throw new IllegalArgumentException("server.contextPath must start with '/': " + server.contextPath());
         }
     }
 
@@ -78,7 +84,20 @@ public record AppConfig(
         }
     }
 
-    public record Server(int port) {
+    public record Server(int port, String contextPath) {
+        public Server {
+            Objects.requireNonNull(contextPath, "contextPath");
+        }
+    }
+
+    /**
+     * Cross-origin policy for browser clients (the Flutter web frontend). An empty list disables
+     * CORS; the wildcard {@code "*"} allows any origin; any other entry is an allowed origin.
+     */
+    public record Cors(List<String> allowedOrigins) {
+        public Cors {
+            allowedOrigins = List.copyOf(allowedOrigins);
+        }
     }
 
     public record Realtime(String endpoint, String serviceRoleKey) {

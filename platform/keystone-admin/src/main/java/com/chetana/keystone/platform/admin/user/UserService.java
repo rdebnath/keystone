@@ -70,7 +70,7 @@ public final class UserService {
         String email = Emails.derive(username, tenantSlug, request.email());
         checkUsernameUnique(username, request.tenantId());
 
-        String sub = supabaseAdmin.ensureUser(email, request.temporaryPassword());
+        String sub = supabaseAdmin.createOrAdoptUser(email, request.temporaryPassword());
         UUID id = idGenerator.nextId();
         OffsetDateTime now = now();
         data.transaction(tx -> {

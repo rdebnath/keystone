@@ -15,10 +15,13 @@ import java.util.Map;
  * <p>Resources are namespaced under {@code /admin-config/} so they do not collide with a hosting
  * application's own {@code /config/} resources. Resolution order (highest precedence wins):
  * <ol>
- *   <li>Environment variable (e.g. {@code SUPABASE_URL}, {@code OIDC_ISSUER})</li>
- *   <li>{@code admin-config/application-{env}.yaml} (selected by {@code APP_ENV}, default {@code local})</li>
+ *   <li>Secret environment variable (e.g. {@code SUPABASE_SERVICE_ROLE_KEY})</li>
+ *   <li>{@code admin-config/application-{env}.yaml} (selected by {@code APP_ENV}, default {@code dev})</li>
  *   <li>{@code admin-config/application.yaml} (base defaults)</li>
  * </ol>
+ *
+ * <p>Only the Supabase service-role key and the bootstrap admin password are secrets read from
+ * environment variables (Cloud Run → Secret Manager); all non-secret values resolve from yaml.
  *
  * <p>The platform database connection is not resolved here — it is inherited from the hosting
  * application (same database, different schema), which passes a {@code DatabaseConfig} directly
@@ -27,7 +30,7 @@ import java.util.Map;
 public final class AdminConfigLoader {
 
     private static final String APP_ENV_KEY = "APP_ENV";
-    private static final String DEFAULT_ENV = "local";
+    private static final String DEFAULT_ENV = "dev";
     private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
 
     private AdminConfigLoader() {
@@ -45,31 +48,32 @@ public final class AdminConfigLoader {
         return new AdminConfig(
                 environment,
                 supabase(env, overlay, base),
-                security(env, overlay, base),
+                security(overlay, base),
                 bootstrap(env, overlay, base));
     }
 
     private static AdminConfig.Supabase supabase(Map<String, String> env, JsonNode overlay, JsonNode base) {
         return new AdminConfig.Supabase(
-                string(env, overlay, base, "SUPABASE_URL", "", "supabase", "url"),
-                string(env, overlay, base, "SUPABASE_SERVICE_ROLE_KEY", "", "supabase", "serviceRoleKey"));
+                fileString(overlay, base, "", "supabase", "url"),
+                secret(env, overlay, base, "SUPABASE_SERVICE_ROLE_KEY", "", "supabase", "serviceRoleKey"));
     }
 
-    private static AdminConfig.Security security(Map<String, String> env, JsonNode overlay, JsonNode base) {
+    private static AdminConfig.Security security(JsonNode overlay, JsonNode base) {
         return new AdminConfig.Security(
-                string(env, overlay, base, "OIDC_ISSUER", "", "security", "issuer"),
-                string(env, overlay, base, "OIDC_AUDIENCE", "authenticated", "security", "audience"),
-                string(env, overlay, base, "OIDC_JWKS_URL", "", "security", "jwksUrl"));
+                fileString(overlay, base, "", "security", "issuer"),
+                fileString(overlay, base, "authenticated", "security", "audience"),
+                fileString(overlay, base, "", "security", "jwksUrl"));
     }
 
     private static AdminConfig.Bootstrap bootstrap(Map<String, String> env, JsonNode overlay, JsonNode base) {
         return new AdminConfig.Bootstrap(
-                string(env, overlay, base, "BOOTSTRAP_ADMIN_USERNAME", "admin", "bootstrap", "adminUsername"),
-                string(env, overlay, base, "BOOTSTRAP_ADMIN_EMAIL", "admin@keystone.com", "bootstrap", "adminEmail"),
-                string(env, overlay, base, "BOOTSTRAP_ADMIN_PASSWORD", "changeit", "bootstrap", "adminPassword"));
+                fileString(overlay, base, "admin", "bootstrap", "adminUsername"),
+                fileString(overlay, base, "admin@keystone.com", "bootstrap", "adminEmail"),
+                secret(env, overlay, base, "BOOTSTRAP_ADMIN_PASSWORD", "changeit", "bootstrap", "adminPassword"));
     }
 
-    private static String string(Map<String, String> env, JsonNode overlay, JsonNode base,
+    /** Secret values: environment variable wins, then yaml, then fallback. */
+    private static String secret(Map<String, String> env, JsonNode overlay, JsonNode base,
                                  String envKey, String fallback, String... path) {
         String fromEnv = env.get(envKey);
         if (fromEnv != null && !fromEnv.isBlank()) {
@@ -80,6 +84,12 @@ public final class AdminConfigLoader {
             return fromFile;
         }
         return fallback;
+    }
+
+    /** Non-secret values: yaml only (no environment override). */
+    private static String fileString(JsonNode overlay, JsonNode base, String fallback, String... path) {
+        String fromFile = fileValue(overlay, base, path);
+        return fromFile == null || fromFile.isBlank() ? fallback : fromFile;
     }
 
     private static String fileValue(JsonNode overlay, JsonNode base, String... path) {

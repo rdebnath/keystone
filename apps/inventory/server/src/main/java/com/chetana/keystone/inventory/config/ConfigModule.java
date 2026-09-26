@@ -20,6 +20,7 @@ public final class ConfigModule extends AbstractModule {
         bind(AppConfig.Database.class).toInstance(config.database());
         bind(AppConfig.Platform.class).toInstance(config.platform());
         bind(AppConfig.Server.class).toInstance(config.server());
+        bind(AppConfig.Cors.class).toInstance(config.cors());
         bind(AppConfig.Realtime.class).toInstance(config.realtime());
         bind(AppConfig.Security.class).toInstance(config.security());
     }

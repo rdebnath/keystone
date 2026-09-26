@@ -38,6 +38,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Riverpod, `dio` REST client, `flutter_secure_storage` tokens, and a `go_router` auth gate in
       the host that routes by `/me` (platform vs. tenant).
 
+- **CORS support** — per-environment `cors.allowedOrigins` (empty = disabled, `*` = any origin),
+  applied via Javalin's bundled CORS plugin; `dev` allows any origin for the local Flutter web
+  client.
+- **App context path** — `server.contextPath` (default `/inventory`) prefixes every route, so the
+  inventory service serves at `http://localhost:8080/inventory`.
+
 ### Changed
 
 - Platform admin backend/frontend moved from the standalone `apps/platform` app into the hosted
@@ -46,6 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   guidelines now specify backend-proxied OIDC login.
 - `user_roles` primary key is `(user_id, role_id)` (its `tenant_id` is nullable); tenant-scoped role
   assignment is carried on `user_roles.tenant_id`.
+
+### Fixed
+
+- Bootstrap no longer re-lists Supabase Auth users by email on restart: it reads the persisted
+  `users.sub` first and provisions (create-or-adopt on conflict) only when absent, fixing the 409
+  "user already exists" on restart.
 
 ### Security
 

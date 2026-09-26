@@ -19,6 +19,7 @@ import com.chetana.keystone.platform.admin.config.SecurityConfigFactory;
 import com.chetana.keystone.platform.admin.data.PlatformDataModule;
 import com.chetana.keystone.security.SecurityConfig;
 import com.chetana.keystone.security.SecurityModule;
+import com.chetana.keystone.web.CorsConfig;
 import com.chetana.keystone.web.WebModule;
 import io.javalin.Javalin;
 
@@ -58,7 +59,7 @@ public final class Main {
                 new DataModule(inventoryDb, inventoryRead),
                 new AdminConfigModule(adminConfig),
                 new PlatformDataModule(platformDb, platformRead),
-                new WebModule(),
+                new WebModule(new CorsConfig(config.cors().allowedOrigins()), config.server().contextPath()),
                 new MetricsModule(),
                 new SecurityModule(security),
                 new AdminModule(),

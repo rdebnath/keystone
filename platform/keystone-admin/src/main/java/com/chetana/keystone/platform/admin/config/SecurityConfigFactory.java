@@ -4,7 +4,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.chetana.keystone.security.SecurityConfig;
 
 import java.io.InputStream;
-import java.net.URL;
+import java.net.URI;
 
 /**
  * Loads the OIDC token-signing keys (JWKS) and builds the admin {@link SecurityConfig} for
@@ -16,7 +16,7 @@ public final class SecurityConfigFactory {
     }
 
     public static SecurityConfig load(AdminConfig.Security security) {
-        try (InputStream in = new URL(security.jwksUrl()).openStream()) {
+        try (InputStream in = new URI(security.jwksUrl()).toURL().openStream()) {
             JWKSet jwkSet = JWKSet.load(in);
             return new SecurityConfig(jwkSet, security.issuer(), security.audience());
         } catch (Exception e) {

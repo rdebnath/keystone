@@ -54,7 +54,7 @@ class SchemaToolTest {
         DatabaseConfig platformDb = DatabaseConfig.of(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword(), 5, "platform");
 
-        // Simulate docker/initdb/init.sql having created the objects WITHOUT Liquibase tracking.
+        // Simulate an externally-initialized database (objects exist WITHOUT Liquibase tracking).
         try (Connection connection = POSTGRES.createConnection("");
              Statement statement = connection.createStatement()) {
             statement.execute("CREATE SCHEMA inventory");

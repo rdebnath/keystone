@@ -10,45 +10,49 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AdminConfigLoaderTest {
 
     @Test
-    void should_load_defaults_with_required_env() {
+    void should_resolve_non_secrets_from_yaml_and_secret_from_env() {
         AdminConfig config = AdminConfigLoader.load(Map.of(
-                "SUPABASE_URL", "https://x.supabase.co",
-                "SUPABASE_SERVICE_ROLE_KEY", "service-role",
-                "OIDC_ISSUER", "https://x.supabase.co",
-                "OIDC_JWKS_URL", "https://x.supabase.co/auth/v1/.well-known/jwks.json"));
+                "APP_ENV", "test",
+                "SUPABASE_SERVICE_ROLE_KEY", "service-role"));
 
-        assertThat(config.environment()).isEqualTo("local");
-        assertThat(config.supabase().url()).isEqualTo("https://x.supabase.co");
+        assertThat(config.environment()).isEqualTo("test");
+        assertThat(config.supabase().url()).isEqualTo("https://test.supabase.co");
         assertThat(config.supabase().serviceRoleKey()).isEqualTo("service-role");
-        assertThat(config.security().issuer()).isEqualTo("https://x.supabase.co");
+        assertThat(config.security().issuer()).isEqualTo("https://test.supabase.co");
         assertThat(config.security().audience()).isEqualTo("authenticated");
-        assertThat(config.security().jwksUrl()).isEqualTo("https://x.supabase.co/auth/v1/.well-known/jwks.json");
+        assertThat(config.security().jwksUrl()).isEqualTo("https://test.supabase.co/auth/v1/.well-known/jwks.json");
         assertThat(config.bootstrap().adminUsername()).isEqualTo("admin");
         assertThat(config.bootstrap().adminEmail()).isEqualTo("admin@keystone.com");
         assertThat(config.bootstrap().adminPassword()).isEqualTo("changeit");
     }
 
     @Test
-    void should_override_bootstrap_with_environment_variables() {
+    void should_override_only_bootstrap_password_secret_with_environment_variable() {
         AdminConfig config = AdminConfigLoader.load(Map.of(
-                "SUPABASE_URL", "https://x.supabase.co",
+                "APP_ENV", "test",
                 "SUPABASE_SERVICE_ROLE_KEY", "service-role",
-                "OIDC_ISSUER", "https://x.supabase.co",
-                "OIDC_JWKS_URL", "https://x.supabase.co/auth/v1/.well-known/jwks.json",
                 "BOOTSTRAP_ADMIN_EMAIL", "boss@keystone.com",
                 "BOOTSTRAP_ADMIN_PASSWORD", "s3cret"));
 
-        assertThat(config.bootstrap().adminUsername()).isEqualTo("admin");
-        assertThat(config.bootstrap().adminEmail()).isEqualTo("boss@keystone.com");
+        // Secret overridden by the environment.
         assertThat(config.bootstrap().adminPassword()).isEqualTo("s3cret");
+        // Non-secret bootstrap values ignore the environment and come from yaml.
+        assertThat(config.bootstrap().adminEmail()).isEqualTo("admin@keystone.com");
+        assertThat(config.bootstrap().adminUsername()).isEqualTo("admin");
     }
 
     @Test
-    void should_fail_fast_when_supabase_is_missing() {
-        assertThatThrownBy(() -> AdminConfigLoader.load(Map.of(
-                "OIDC_ISSUER", "https://x.supabase.co",
-                "OIDC_JWKS_URL", "https://x.supabase.co/auth/v1/.well-known/jwks.json")))
+    void should_fail_fast_when_non_secret_supabase_url_is_missing() {
+        // No application-prod.yaml: the base yaml leaves supabase.url blank -> rejected.
+        assertThatThrownBy(() -> AdminConfigLoader.load(Map.of("APP_ENV", "prod")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("supabase.url");
+    }
+
+    @Test
+    void should_fail_fast_when_service_role_key_secret_is_missing() {
+        assertThatThrownBy(() -> AdminConfigLoader.load(Map.of("APP_ENV", "test")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("supabase.serviceRoleKey");
     }
 }

@@ -25,6 +25,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -95,10 +96,15 @@ class AdminIntegrationTest {
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword(), 5, "platform");
         SupabaseAdminClient fakeSupabase = new SupabaseAdminClient() {
             @Override
-            public String ensureUser(String email, String password) {
+            public String createUser(String email, String password) {
                 // Real Supabase Auth returns a unique sub per user; mimic that so `users.sub`
                 // (unique) is not violated. The admin keeps ADMIN_SUB for the /me assertions.
                 return email.equals("admin@keystone.com") ? ADMIN_SUB : "sub:" + email;
+            }
+
+            @Override
+            public Optional<String> findSubByEmail(String email) {
+                return Optional.empty();
             }
 
             @Override

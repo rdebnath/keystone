@@ -7,6 +7,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,19 +16,19 @@ import java.util.Map;
  *
  * <p>Resolution order (highest precedence wins):
  * <ol>
- *   <li>Environment variable (e.g. {@code DB_URL}, {@code PORT})</li>
- *   <li>{@code config/application-{env}.yaml} (selected by {@code APP_ENV}, default {@code local})</li>
+ *   <li>Secret environment variable (e.g. {@code DB_PASSWORD}, {@code REALTIME_SERVICE_ROLE_KEY})</li>
+ *   <li>{@code config/application-{env}.yaml} (selected by {@code APP_ENV}, default {@code dev})</li>
  *   <li>{@code config/application.yaml} (base defaults)</li>
  * </ol>
  *
- * <p>The same image ships to every environment; only {@code APP_ENV} and secrets differ. Secrets
- * (passwords, service-role keys, OIDC keys) are never read from files in a non-local environment —
- * they come from environment variables (Cloud Run → Secret Manager).
+ * <p>Only secrets (database password, realtime service-role key) are read from environment
+ * variables (Cloud Run → Secret Manager). Every non-secret value is resolved from the yaml files.
+ * The same image ships to every environment; only {@code APP_ENV} and secrets differ.
  */
 public final class ConfigLoader {
 
     private static final String APP_ENV_KEY = "APP_ENV";
-    private static final String DEFAULT_ENV = "local";
+    private static final String DEFAULT_ENV = "dev";
     private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
 
     private ConfigLoader() {
@@ -46,18 +48,19 @@ public final class ConfigLoader {
         return new AppConfig(
                 environment,
                 database(env, overlay, base),
-                platform(env, overlay, base),
-                server(env, overlay, base),
+                platform(overlay, base),
+                server(overlay, base),
+                cors(overlay, base),
                 realtime(env, overlay, base),
-                security(env, overlay, base));
+                security(overlay, base));
     }
 
     private static AppConfig.Database database(Map<String, String> env, JsonNode overlay, JsonNode base) {
-        String url = string(env, overlay, base, "DB_URL", "database", "url");
-        String username = string(env, overlay, base, "DB_USERNAME", "database", "username");
-        String password = string(env, overlay, base, "DB_PASSWORD", "database", "password");
-        int maxPoolSize = intValue(env, overlay, base, "DB_MAX_POOL_SIZE", 10, "database", "maxPoolSize");
-        String schema = string(env, overlay, base, "DB_SCHEMA", "database", "schema");
+        String url = fileString(overlay, base, "database", "url");
+        String username = fileString(overlay, base, "database", "username");
+        String password = secret(env, overlay, base, "DB_PASSWORD", "database", "password");
+        int maxPoolSize = fileInt(overlay, base, 10, "database", "maxPoolSize");
+        String schema = fileString(overlay, base, "database", "schema");
         return new AppConfig.Database(url, username, password, maxPoolSize, schema,
                 read(overlay, base, username, password, maxPoolSize));
     }
@@ -81,27 +84,34 @@ public final class ConfigLoader {
         return value == null || value.isBlank() ? fallback : Integer.parseInt(value.trim());
     }
 
-    private static AppConfig.Platform platform(Map<String, String> env, JsonNode overlay, JsonNode base) {
-        return new AppConfig.Platform(string(env, overlay, base, "PLATFORM_SCHEMA", "platform", "schema"));
+    private static AppConfig.Platform platform(JsonNode overlay, JsonNode base) {
+        return new AppConfig.Platform(fileString(overlay, base, "platform", "schema"));
     }
 
-    private static AppConfig.Server server(Map<String, String> env, JsonNode overlay, JsonNode base) {
-        return new AppConfig.Server(intValue(env, overlay, base, "PORT", 8080, "server", "port"));
+    private static AppConfig.Server server(JsonNode overlay, JsonNode base) {
+        return new AppConfig.Server(
+                fileInt(overlay, base, 8080, "server", "port"),
+                fileString(overlay, base, "server", "contextPath"));
+    }
+
+    private static AppConfig.Cors cors(JsonNode overlay, JsonNode base) {
+        return new AppConfig.Cors(fileList(overlay, base, "cors", "allowedOrigins"));
     }
 
     private static AppConfig.Realtime realtime(Map<String, String> env, JsonNode overlay, JsonNode base) {
         return new AppConfig.Realtime(
-                string(env, overlay, base, "REALTIME_ENDPOINT", "realtime", "endpoint"),
-                string(env, overlay, base, "REALTIME_SERVICE_ROLE_KEY", "realtime", "serviceRoleKey"));
+                fileString(overlay, base, "realtime", "endpoint"),
+                secret(env, overlay, base, "REALTIME_SERVICE_ROLE_KEY", "realtime", "serviceRoleKey"));
     }
 
-    private static AppConfig.Security security(Map<String, String> env, JsonNode overlay, JsonNode base) {
+    private static AppConfig.Security security(JsonNode overlay, JsonNode base) {
         return new AppConfig.Security(
-                string(env, overlay, base, "OIDC_ISSUER", "security", "issuer"),
-                string(env, overlay, base, "OIDC_AUDIENCE", "security", "audience"));
+                fileString(overlay, base, "security", "issuer"),
+                fileString(overlay, base, "security", "audience"));
     }
 
-    private static String string(Map<String, String> env, JsonNode overlay, JsonNode base,
+    /** Secret values: environment variable wins, then yaml, then blank. */
+    private static String secret(Map<String, String> env, JsonNode overlay, JsonNode base,
                                  String envKey, String... path) {
         String fromEnv = env.get(envKey);
         if (fromEnv != null && !fromEnv.isBlank()) {
@@ -111,10 +121,10 @@ public final class ConfigLoader {
         return fromFile == null ? "" : fromFile;
     }
 
-    private static int intValue(Map<String, String> env, JsonNode overlay, JsonNode base,
-                                String envKey, int fallback, String... path) {
-        String value = string(env, overlay, base, envKey, path);
-        return value.isBlank() ? fallback : Integer.parseInt(value.trim());
+    /** Non-secret values: yaml only (no environment override). */
+    private static String fileString(JsonNode overlay, JsonNode base, String... path) {
+        String fromFile = fileValue(overlay, base, path);
+        return fromFile == null ? "" : fromFile;
     }
 
     private static String fileValue(JsonNode overlay, JsonNode base, String... path) {
@@ -125,7 +135,7 @@ public final class ConfigLoader {
         return pathValue(base, path);
     }
 
-    private static String pathValue(JsonNode root, String... path) {
+    private static JsonNode pathNode(JsonNode root, String... path) {
         JsonNode node = root;
         for (String key : path) {
             if (node == null) {
@@ -133,7 +143,27 @@ public final class ConfigLoader {
             }
             node = node.get(key);
         }
+        return node;
+    }
+
+    private static String pathValue(JsonNode root, String... path) {
+        JsonNode node = pathNode(root, path);
         return node == null || node.isNull() ? null : node.asText();
+    }
+
+    private static List<String> fileList(JsonNode overlay, JsonNode base, String... path) {
+        JsonNode node = pathNode(overlay, path);
+        if (node == null || !node.isArray()) {
+            node = pathNode(base, path);
+        }
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
+        List<String> values = new ArrayList<>();
+        for (JsonNode element : node) {
+            values.add(element.asText());
+        }
+        return List.copyOf(values);
     }
 
     private static JsonNode readRequired(String path) {

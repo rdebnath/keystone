@@ -1,0 +1,8 @@
+# Demo environment — shared Supabase project. Non-secret values only; the service-role key comes
+# from SUPABASE_SERVICE_ROLE_KEY (environment variable / Secret Manager).
+supabase:
+  url: https://gxswbqcbxorfiinfdqke.supabase.co
+security:
+  issuer: https://gxswbqcbxorfiinfdqke.supabase.co
+  audience: authenticated
+  jwksUrl: https://gxswbqcbxorfiinfdqke.supabase.co/auth/v1/.well-known/jwks.json

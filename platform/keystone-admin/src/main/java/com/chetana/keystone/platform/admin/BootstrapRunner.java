@@ -55,7 +55,7 @@ public final class BootstrapRunner {
     }
 
     public void bootstrap() {
-        String sub = supabaseAdmin.ensureUser(bootstrap.adminEmail(), bootstrap.adminPassword());
+        String sub = resolveAdminSub();
         UUID userId = data.transactionResult(tx -> {
             OffsetDateTime now = now();
             seedPermissions(tx, now);
@@ -65,6 +65,24 @@ public final class BootstrapRunner {
             return id;
         });
         log.info("Bootstrapped platform admin user {} (sub {})", userId, sub);
+    }
+
+    /**
+     * Returns the admin's Auth {@code sub}, preferring the value already persisted in
+     * {@code users.sub} so a restart does not re-list (or re-create) the Supabase user. Falls back
+     * to provisioning — and recovering from a partially-completed bootstrap — only when no
+     * application row exists yet.
+     */
+    private String resolveAdminSub() {
+        String persisted = data.read()
+                .select(USERS.SUB).from(USERS)
+                .where(USERS.USERNAME.eq(bootstrap.adminUsername()))
+                .and(USERS.TENANT_ID.isNull())
+                .fetchOne(USERS.SUB);
+        if (persisted != null) {
+            return persisted;
+        }
+        return supabaseAdmin.createOrAdoptUser(bootstrap.adminEmail(), bootstrap.adminPassword());
     }
 
     private void seedPermissions(DSLContext tx, OffsetDateTime now) {

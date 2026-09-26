@@ -24,7 +24,7 @@ import java.util.Locale;
  *   <li>{@code reset} — drop, then migrate.</li>
  * </ul>
  *
- * <p>Environment selection works like the server: {@code APP_ENV} (default {@code local}) picks the
+ * <p>Environment selection works like the server: {@code APP_ENV} (default {@code dev}) picks the
  * per-environment config file, and {@code DB_PASSWORD} supplies the password. Supabase/OIDC/bootstrap
  * variables are NOT required. Example:
  *
@@ -114,6 +114,10 @@ public final class SchemaTool {
         hikari.setUsername(config.username());
         hikari.setPassword(config.password());
         hikari.setMaximumPoolSize(config.maxPoolSize());
+        // Supabase's connection pooler (PgBouncer, transaction mode) does not support server-side
+        // prepared statements; force client-side prepared statements to avoid Liquibase's
+        // "prepared statement already exists" failures.
+        hikari.addDataSourceProperty("prepareThreshold", "0");
         return new HikariDataSource(hikari);
     }
 
