@@ -12,6 +12,12 @@ database:
   schema: ""             # optional: blank = default (public) schema of the database named in `url`
                          #          (separate database per app); set to a value (e.g. "inventory")
                          #          to isolate apps by schema within a shared database
+  read:                  # read target: a read replica, or the primary (read/write on one instance)
+    url: ""              # required per environment (application-{env}.yaml); set equal to database.url
+                         # for read/write on one instance, or to a replica URL to enable a replica
+    username: ""         # blank = database.username
+    password: ""         # blank = database.password; never commit a real value
+    maxPoolSize: ""      # blank = database.maxPoolSize
 
 server:
   port: 8080             # Cloud Run injects PORT, which overrides this

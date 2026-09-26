@@ -6,10 +6,9 @@ import com.chetana.keystone.common.error.ConflictException;
 import com.chetana.keystone.common.error.ValidationException;
 import com.chetana.keystone.common.id.IdGenerator;
 import com.chetana.keystone.common.time.DateTimeService;
+import com.chetana.keystone.data.DataAccess;
 import com.chetana.keystone.platform.admin.data.Platform;
 import com.chetana.keystone.platform.admin.identity.Scope;
-import org.jooq.DSLContext;
-import org.jooq.impl.DSL;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -25,19 +24,19 @@ import static com.chetana.keystone.platform.admin.jooq.Tables.ROLE_PERMISSIONS;
 @Singleton
 public final class PermissionService {
 
-    private final DSLContext dsl;
+    private final DataAccess data;
     private final IdGenerator idGenerator;
     private final DateTimeService dateTimeService;
 
     @Inject
-    public PermissionService(@Platform DSLContext dsl, IdGenerator idGenerator, DateTimeService dateTimeService) {
-        this.dsl = dsl;
+    public PermissionService(@Platform DataAccess data, IdGenerator idGenerator, DateTimeService dateTimeService) {
+        this.data = data;
         this.idGenerator = idGenerator;
         this.dateTimeService = dateTimeService;
     }
 
     public List<PermissionDto> list() {
-        return dsl.selectFrom(PERMISSIONS)
+        return data.read().selectFrom(PERMISSIONS)
                 .orderBy(PERMISSIONS.CODE)
                 .fetch()
                 .map(r -> new PermissionDto(r.getId(), r.getCode(), Scope.from(r.getScope()), r.getCreatedAt(), r.getUpdatedAt()));
@@ -47,7 +46,7 @@ public final class PermissionService {
         validate(request);
         UUID id = idGenerator.nextId();
         OffsetDateTime now = now();
-        int inserted = dsl.insertInto(PERMISSIONS, PERMISSIONS.ID, PERMISSIONS.CODE, PERMISSIONS.SCOPE, PERMISSIONS.CREATED_AT, PERMISSIONS.UPDATED_AT)
+        int inserted = data.write().insertInto(PERMISSIONS, PERMISSIONS.ID, PERMISSIONS.CODE, PERMISSIONS.SCOPE, PERMISSIONS.CREATED_AT, PERMISSIONS.UPDATED_AT)
                 .values(id, request.code(), request.scope().name(), now, now)
                 .onConflictDoNothing()
                 .execute();
@@ -58,8 +57,7 @@ public final class PermissionService {
     }
 
     public void delete(UUID id) {
-        dsl.transaction(configuration -> {
-            DSLContext tx = DSL.using(configuration);
+        data.transaction(tx -> {
             tx.deleteFrom(ROLE_PERMISSIONS).where(ROLE_PERMISSIONS.PERMISSION_ID.eq(id)).execute();
             tx.deleteFrom(PERMISSIONS).where(PERMISSIONS.ID.eq(id)).execute();
         });

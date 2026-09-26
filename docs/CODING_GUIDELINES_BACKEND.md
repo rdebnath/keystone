@@ -345,6 +345,26 @@ without a reason.
 - **No connection-test-query**: rely on JDBC 4 `Connection.isValid()` for PostgreSQL; do
   not set a legacy `connection-test-query`.
 
+### Read/write split (read replica)
+
+Route **writes to the primary** (read-write) instance and **reads to a read replica** by
+default, using the `DataAccess` facade (`keystone-data`):
+
+- Inject `DataAccess` (not a raw `DSLContext`) into services/DAOs.
+- `data.read()` returns the replica `DSLContext`; `data.write()` returns the primary
+  `DSLContext`; `data.transaction(...)` / `transactionResult(...)` run on the primary.
+- **Read-your-writes**: wrap a write-then-immediate-read in
+  `data.readFromPrimary(() -> …)` / `readFromPrimary(runnable)` so the read hits the primary
+  regardless of replica lag.
+- **Read target is required**: `database.read.url` is configured in yaml only
+  (`application-{env}.yaml`; no env override) and is **required** — set it equal to
+  `database.url` for read/write on one instance, or to a replica URL to enable a replica.
+  `database.read.username/password/maxPoolSize` are optional and fall back to the primary's
+  values. The replica pool is `readOnly=true` (PostgreSQL rejects accidental writes).
+- Wire via `new DataModule(primary, read)` (when the read URL equals the primary it aliases the
+  primary); the platform-admin schema mirrors this with `PlatformDataModule`,
+  `@Platform`/`@PlatformReplica`, and `@Platform DataAccess`.
+
 ## 8. Communication: Request/Response & Realtime
 
 Keystone uses two interaction styles. **Google Cloud Run's front-end** terminates TLS and

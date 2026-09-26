@@ -4,9 +4,9 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.chetana.keystone.common.error.NotFoundException;
 import com.chetana.keystone.common.time.DateTimeService;
+import com.chetana.keystone.data.DataAccess;
 import com.chetana.keystone.platform.admin.data.Platform;
 import com.chetana.keystone.platform.admin.supabase.SupabaseAdminClient;
-import org.jooq.DSLContext;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -21,21 +21,21 @@ import static com.chetana.keystone.platform.admin.jooq.Tables.USERS;
 @Singleton
 public final class MeService {
 
-    private final DSLContext dsl;
+    private final DataAccess data;
     private final PermissionResolver permissionResolver;
     private final DateTimeService dateTimeService;
     private final SupabaseAdminClient supabaseAdmin;
 
     @Inject
-    public MeService(@Platform DSLContext dsl, PermissionResolver permissionResolver, DateTimeService dateTimeService, SupabaseAdminClient supabaseAdmin) {
-        this.dsl = dsl;
+    public MeService(@Platform DataAccess data, PermissionResolver permissionResolver, DateTimeService dateTimeService, SupabaseAdminClient supabaseAdmin) {
+        this.data = data;
         this.permissionResolver = permissionResolver;
         this.dateTimeService = dateTimeService;
         this.supabaseAdmin = supabaseAdmin;
     }
 
     public MeDto me(String sub) {
-        var user = dsl.selectFrom(USERS).where(USERS.SUB.eq(sub)).fetchOne();
+        var user = data.read().selectFrom(USERS).where(USERS.SUB.eq(sub)).fetchOne();
         if (user == null) {
             throw new NotFoundException("User not found: " + sub);
         }
@@ -50,7 +50,7 @@ public final class MeService {
 
     public void markPasswordChanged(String sub) {
         OffsetDateTime now = dateTimeService.now().atOffset(ZoneOffset.UTC);
-        int updated = dsl.update(USERS)
+        int updated = data.write().update(USERS)
                 .set(USERS.MUST_CHANGE_PASSWORD, false)
                 .set(USERS.UPDATED_AT, now)
                 .where(USERS.SUB.eq(sub))

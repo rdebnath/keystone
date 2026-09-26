@@ -4,10 +4,10 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.chetana.keystone.common.error.AccessDeniedException;
 import com.chetana.keystone.common.error.KeystoneException;
+import com.chetana.keystone.data.DataAccess;
 import com.chetana.keystone.platform.admin.data.Platform;
 import com.chetana.keystone.platform.admin.supabase.Session;
 import com.chetana.keystone.platform.admin.supabase.SupabaseAdminClient;
-import org.jooq.DSLContext;
 
 import java.util.UUID;
 
@@ -22,13 +22,13 @@ import static com.chetana.keystone.platform.admin.jooq.Tables.USERS;
 @Singleton
 public final class LoginService {
 
-    private final DSLContext dsl;
+    private final DataAccess data;
     private final TenantResolver tenantResolver;
     private final SupabaseAdminClient supabaseAdmin;
 
     @Inject
-    public LoginService(@Platform DSLContext dsl, TenantResolver tenantResolver, SupabaseAdminClient supabaseAdmin) {
-        this.dsl = dsl;
+    public LoginService(@Platform DataAccess data, TenantResolver tenantResolver, SupabaseAdminClient supabaseAdmin) {
+        this.data = data;
         this.tenantResolver = tenantResolver;
         this.supabaseAdmin = supabaseAdmin;
     }
@@ -45,7 +45,7 @@ public final class LoginService {
     }
 
     private String resolveEmail(String username, UUID tenantId) {
-        var user = dsl.select(USERS.EMAIL)
+        var user = data.read().select(USERS.EMAIL)
                 .from(USERS)
                 .where(USERS.USERNAME.eq(username))
                 .and(tenantId == null ? USERS.TENANT_ID.isNull() : USERS.TENANT_ID.eq(tenantId))

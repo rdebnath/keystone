@@ -36,17 +36,34 @@ public record AppConfig(
         if (database.password().isBlank()) {
             throw new IllegalArgumentException("database.password is required (set DB_PASSWORD or application-local.yaml)");
         }
+        if (database.read().url().isBlank()) {
+            throw new IllegalArgumentException("database.read.url is required (set in application-{env}.yaml)");
+        }
         if (server.port() < 1 || server.port() > 65535) {
             throw new IllegalArgumentException("server.port must be in [1, 65535]: " + server.port());
         }
     }
 
-    public record Database(String url, String username, String password, int maxPoolSize, String schema) {
+    public record Database(String url, String username, String password, int maxPoolSize, String schema, Read read) {
         public Database {
             Objects.requireNonNull(url, "url");
             Objects.requireNonNull(username, "username");
             Objects.requireNonNull(password, "password");
             Objects.requireNonNull(schema, "schema");
+            Objects.requireNonNull(read, "read");
+        }
+    }
+
+    /**
+     * Read target — a read replica, or the primary for read/write on one instance. Resolved by
+     * {@link ConfigLoader} from {@code database.read.*} (yaml only, no env override); blank values
+     * fall back to the primary {@link Database}.
+     */
+    public record Read(String url, String username, String password, int maxPoolSize) {
+        public Read {
+            Objects.requireNonNull(url, "url");
+            Objects.requireNonNull(username, "username");
+            Objects.requireNonNull(password, "password");
         }
     }
 

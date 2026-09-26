@@ -23,6 +23,10 @@ class AdminConfigLoaderTest {
         assertThat(config.database().username()).isEqualTo("keystone");
         assertThat(config.database().password()).isEqualTo("keystone");
         assertThat(config.database().schema()).isEqualTo("platform");
+        // read target resolves from yaml; blank falls back to the primary (read/write on one instance).
+        assertThat(config.database().read().url()).isEqualTo("jdbc:postgresql://localhost:5432/keystone");
+        assertThat(config.database().read().username()).isEqualTo("keystone");
+        assertThat(config.database().read().password()).isEqualTo("keystone");
         assertThat(config.security().audience()).isEqualTo("authenticated");
         assertThat(config.bootstrap().adminUsername()).isEqualTo("admin");
         assertThat(config.bootstrap().adminEmail()).isEqualTo("admin@keystone.com");
@@ -44,6 +48,10 @@ class AdminConfigLoaderTest {
         assertThat(config.database().password()).isEqualTo("s3cret");
         assertThat(config.database().username()).isEqualTo("keystone");
         assertThat(config.database().schema()).isEqualTo("platform");
+        // read target is yaml-only (not affected by the DB_URL env override).
+        assertThat(config.database().read().url()).isEqualTo("jdbc:postgresql://localhost:5432/keystone");
+        assertThat(config.database().read().password()).isEqualTo("s3cret");
+        assertThat(config.database().read().username()).isEqualTo("keystone");
         assertThat(config.bootstrap().adminEmail()).isEqualTo("boss@keystone.com");
     }
 

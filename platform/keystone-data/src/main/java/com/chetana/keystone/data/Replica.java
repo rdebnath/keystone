@@ -1,0 +1,21 @@
+package com.chetana.keystone.data;
+
+import com.google.inject.BindingAnnotation;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+/**
+ * Qualifies the read-replica {@code DataSource}/{@code DSLContext}. When no read replica is
+ * configured, this binding aliases the {@link Primary} instance.
+ */
+@BindingAnnotation
+@Target({FIELD, PARAMETER, METHOD})
+@Retention(RUNTIME)
+public @interface Replica {
+}

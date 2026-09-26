@@ -101,7 +101,7 @@ Keystone is a monorepo split into two layers:
 | `keystone-bom` | Versioned BOM that pins platform module versions for apps. |
 | `keystone-common` | Errors, ids, time, RFC 9457 problem+json. |
 | `keystone-web` | Guice + Javalin base: wiring, filters, validation, error handler. |
-| `keystone-data` | jOOQ/Liquibase infrastructure: `DSLContext`, transactions, DAO conventions. |
+| `keystone-data` | jOOQ/Liquibase infrastructure: `DataAccess` read/write split (primary + read replica), `DSLContext`, transactions, DAO conventions. |
 | `keystone-realtime` | Supabase Realtime publisher (`RealtimePublisher`). |
 | `keystone-security` | OIDC resource-server JWT validation + authorization. |
 | `keystone-observability` | Micrometer metrics, structured logging, correlation id. |
@@ -126,8 +126,10 @@ Keystone is a monorepo split into two layers:
 - **Javalin** provides the HTTP layer on an embedded Jetty server: routing, JSON
   serialization, request validation, and a single global exception handler that maps errors
   to RFC 9457 `application/problem+json`.
-- **jOOQ** is the data-access layer. Services use a `DSLContext` with generated records and
-  execute SQL in transactions at the service boundary.
+- **jOOQ** is the data-access layer. Services use the `DataAccess` facade with generated
+  records: `read()` routes to a read replica, `write()` to the primary (read-write) instance,
+  and `readFromPrimary(...)` scopes read-your-writes. Transactions run at the service boundary
+  on the primary.
 - **Liquibase** owns the schema. Changelogs are XML and are the single source of truth for
   the database shape.
 

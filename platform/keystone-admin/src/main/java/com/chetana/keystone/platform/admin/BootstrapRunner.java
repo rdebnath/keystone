@@ -4,11 +4,11 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.chetana.keystone.common.id.IdGenerator;
 import com.chetana.keystone.common.time.DateTimeService;
+import com.chetana.keystone.data.DataAccess;
 import com.chetana.keystone.platform.admin.config.AdminConfig;
 import com.chetana.keystone.platform.admin.data.Platform;
 import com.chetana.keystone.platform.admin.supabase.SupabaseAdminClient;
 import org.jooq.DSLContext;
-import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +36,7 @@ public final class BootstrapRunner {
 
     private final SupabaseAdminClient supabaseAdmin;
     private final AdminConfig.Bootstrap bootstrap;
-    private final DSLContext dsl;
+    private final DataAccess data;
     private final IdGenerator idGenerator;
     private final DateTimeService dateTimeService;
 
@@ -44,20 +44,19 @@ public final class BootstrapRunner {
     public BootstrapRunner(
             SupabaseAdminClient supabaseAdmin,
             AdminConfig.Bootstrap bootstrap,
-            @Platform DSLContext dsl,
+            @Platform DataAccess data,
             IdGenerator idGenerator,
             DateTimeService dateTimeService) {
         this.supabaseAdmin = supabaseAdmin;
         this.bootstrap = bootstrap;
-        this.dsl = dsl;
+        this.data = data;
         this.idGenerator = idGenerator;
         this.dateTimeService = dateTimeService;
     }
 
     public void bootstrap() {
         String sub = supabaseAdmin.ensureUser(bootstrap.adminEmail(), bootstrap.adminPassword());
-        UUID userId = dsl.transactionResult(configuration -> {
-            DSLContext tx = DSL.using(configuration);
+        UUID userId = data.transactionResult(tx -> {
             OffsetDateTime now = now();
             seedPermissions(tx, now);
             UUID roleId = seedPlatformAdminRole(tx, now);

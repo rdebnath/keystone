@@ -4,3 +4,5 @@ database:
   username: keystone
   password: keystone   # throwaway local-only credential
   schema: platform     # shared DB -> isolate by schema
+  read:
+    url: jdbc:postgresql://localhost:5432/keystone   # read/write on one instance (== database.url)

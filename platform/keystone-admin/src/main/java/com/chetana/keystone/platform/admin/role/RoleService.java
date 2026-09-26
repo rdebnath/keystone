@@ -7,10 +7,10 @@ import com.chetana.keystone.common.error.NotFoundException;
 import com.chetana.keystone.common.error.ValidationException;
 import com.chetana.keystone.common.id.IdGenerator;
 import com.chetana.keystone.common.time.DateTimeService;
+import com.chetana.keystone.data.DataAccess;
 import com.chetana.keystone.platform.admin.data.Platform;
 import com.chetana.keystone.platform.admin.identity.Scope;
 import org.jooq.DSLContext;
-import org.jooq.impl.DSL;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -29,20 +29,20 @@ import static com.chetana.keystone.platform.admin.jooq.Tables.USER_ROLES;
 @Singleton
 public final class RoleService {
 
-    private final DSLContext dsl;
+    private final DataAccess data;
     private final IdGenerator idGenerator;
     private final DateTimeService dateTimeService;
 
     @Inject
-    public RoleService(@Platform DSLContext dsl, IdGenerator idGenerator, DateTimeService dateTimeService) {
-        this.dsl = dsl;
+    public RoleService(@Platform DataAccess data, IdGenerator idGenerator, DateTimeService dateTimeService) {
+        this.data = data;
         this.idGenerator = idGenerator;
         this.dateTimeService = dateTimeService;
     }
 
     public List<RoleDto> list() {
-        var roles = dsl.selectFrom(ROLES).orderBy(ROLES.CODE).fetch();
-        Map<UUID, List<String>> permissionsByRole = dsl
+        var roles = data.read().selectFrom(ROLES).orderBy(ROLES.CODE).fetch();
+        Map<UUID, List<String>> permissionsByRole = data.read()
                 .select(ROLE_PERMISSIONS.ROLE_ID, PERMISSIONS.CODE)
                 .from(ROLE_PERMISSIONS)
                 .join(PERMISSIONS).on(PERMISSIONS.ID.eq(ROLE_PERMISSIONS.PERMISSION_ID))
@@ -60,8 +60,7 @@ public final class RoleService {
         validate(request);
         UUID id = idGenerator.nextId();
         OffsetDateTime now = now();
-        return dsl.transactionResult(configuration -> {
-            DSLContext tx = DSL.using(configuration);
+        return data.transactionResult(tx -> {
             int inserted = tx.insertInto(ROLES, ROLES.ID, ROLES.CODE, ROLES.SCOPE, ROLES.CREATED_AT, ROLES.UPDATED_AT)
                     .values(id, request.code(), request.scope().name(), now, now)
                     .onConflictDoNothing()
@@ -75,13 +74,12 @@ public final class RoleService {
     }
     public RoleDto update(UUID id, RoleRequest request) {
         validate(request);
-        var existing = dsl.selectFrom(ROLES).where(ROLES.ID.eq(id)).fetchOne();
+        var existing = data.read().selectFrom(ROLES).where(ROLES.ID.eq(id)).fetchOne();
         if (existing == null) {
             throw new NotFoundException("Role not found: " + id);
         }
         OffsetDateTime now = now();
-        dsl.transaction(configuration -> {
-            DSLContext tx = DSL.using(configuration);
+        data.transaction(tx -> {
             tx.update(ROLES)
                     .set(ROLES.CODE, request.code())
                     .set(ROLES.SCOPE, request.scope().name())
@@ -95,8 +93,7 @@ public final class RoleService {
     }
 
     public void delete(UUID id) {
-        dsl.transaction(configuration -> {
-            DSLContext tx = DSL.using(configuration);
+        data.transaction(tx -> {
             tx.deleteFrom(ROLE_PERMISSIONS).where(ROLE_PERMISSIONS.ROLE_ID.eq(id)).execute();
             tx.deleteFrom(USER_ROLES).where(USER_ROLES.ROLE_ID.eq(id)).execute();
             tx.deleteFrom(ROLES).where(ROLES.ID.eq(id)).execute();

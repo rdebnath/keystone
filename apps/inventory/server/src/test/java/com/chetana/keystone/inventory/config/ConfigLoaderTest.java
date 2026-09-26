@@ -19,6 +19,11 @@ class ConfigLoaderTest {
         assertThat(config.database().password()).isEqualTo("keystone");
         assertThat(config.database().maxPoolSize()).isEqualTo(10);
         assertThat(config.database().schema()).isEqualTo("inventory");
+        // read target resolves from yaml; blank falls back to the primary (read/write on one instance).
+        assertThat(config.database().read().url()).isEqualTo("jdbc:postgresql://localhost:5432/keystone");
+        assertThat(config.database().read().username()).isEqualTo("keystone");
+        assertThat(config.database().read().password()).isEqualTo("keystone");
+        assertThat(config.database().read().maxPoolSize()).isEqualTo(10);
         assertThat(config.server().port()).isEqualTo(8080);
     }
 
@@ -35,6 +40,10 @@ class ConfigLoaderTest {
         // untouched values still come from the local file
         assertThat(config.database().username()).isEqualTo("keystone");
         assertThat(config.database().schema()).isEqualTo("inventory");
+        // read target is yaml-only (not affected by the DB_URL env override).
+        assertThat(config.database().read().url()).isEqualTo("jdbc:postgresql://localhost:5432/keystone");
+        assertThat(config.database().read().password()).isEqualTo("s3cret");
+        assertThat(config.database().read().username()).isEqualTo("keystone");
     }
 
     @Test
@@ -74,12 +83,9 @@ class ConfigLoaderTest {
     @Test
     void should_allow_blank_schema_for_separate_database() {
         // A blank schema means "use the database's default (public) schema" — each app in its own database.
-        AppConfig config = ConfigLoader.load(Map.of(
-                "APP_ENV", "separate",   // no application-separate.yaml -> base defaults only
-                "DB_URL", "jdbc:postgresql://localhost:5432/inventory",
-                "DB_USERNAME", "keystone",
-                "DB_PASSWORD", "keystone"));
+        AppConfig config = ConfigLoader.load(Map.of("APP_ENV", "separate"));
 
         assertThat(config.database().schema()).isEqualTo("");
+        assertThat(config.database().read().url()).isEqualTo("jdbc:postgresql://localhost:5432/inventory");
     }
 }

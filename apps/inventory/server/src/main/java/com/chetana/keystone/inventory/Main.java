@@ -43,19 +43,21 @@ public final class Main {
                 config.database().password(),
                 config.database().maxPoolSize(),
                 config.database().schema());
+        DatabaseConfig inventoryRead = readDatabase(config.database());
         DatabaseConfig platformDb = DatabaseConfig.of(
                 adminConfig.database().url(),
                 adminConfig.database().username(),
                 adminConfig.database().password(),
                 adminConfig.database().maxPoolSize(),
                 adminConfig.database().schema());
+        DatabaseConfig platformRead = readDatabase(adminConfig.database());
 
         Injector injector = Guice.createInjector(
                 Stage.PRODUCTION,
                 new ConfigModule(config),
-                new DataModule(inventoryDb),
+                new DataModule(inventoryDb, inventoryRead),
                 new AdminConfigModule(adminConfig),
-                new PlatformDataModule(platformDb),
+                new PlatformDataModule(platformDb, platformRead),
                 new WebModule(),
                 new MetricsModule(),
                 new SecurityModule(security),
@@ -67,5 +69,16 @@ public final class Main {
         injector.getInstance(BootstrapRunner.class).bootstrap();
 
         injector.getInstance(Javalin.class).start(config.server().port());
+    }
+
+    /** Maps a resolved read target to a {@link DatabaseConfig}; the same URL as the primary aliases it. */
+    private static DatabaseConfig readDatabase(AppConfig.Database database) {
+        AppConfig.Read read = database.read();
+        return DatabaseConfig.of(read.url(), read.username(), read.password(), read.maxPoolSize(), database.schema());
+    }
+
+    private static DatabaseConfig readDatabase(AdminConfig.Database database) {
+        AdminConfig.Read read = database.read();
+        return DatabaseConfig.of(read.url(), read.username(), read.password(), read.maxPoolSize(), database.schema());
     }
 }

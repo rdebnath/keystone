@@ -7,12 +7,12 @@ import com.chetana.keystone.common.error.NotFoundException;
 import com.chetana.keystone.common.error.ValidationException;
 import com.chetana.keystone.common.id.IdGenerator;
 import com.chetana.keystone.common.time.DateTimeService;
+import com.chetana.keystone.data.DataAccess;
 import com.chetana.keystone.platform.admin.PlatformSchema;
 import com.chetana.keystone.platform.admin.data.Platform;
 import com.chetana.keystone.platform.admin.supabase.SupabaseAdminClient;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
-import org.jooq.impl.DSL;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -31,22 +31,22 @@ import static com.chetana.keystone.platform.admin.jooq.Tables.USERS;
 @Singleton
 public final class UserService {
 
-    private final DSLContext dsl;
+    private final DataAccess data;
     private final IdGenerator idGenerator;
     private final DateTimeService dateTimeService;
     private final SupabaseAdminClient supabaseAdmin;
 
     @Inject
-    public UserService(@Platform DSLContext dsl, IdGenerator idGenerator, DateTimeService dateTimeService, SupabaseAdminClient supabaseAdmin) {
-        this.dsl = dsl;
+    public UserService(@Platform DataAccess data, IdGenerator idGenerator, DateTimeService dateTimeService, SupabaseAdminClient supabaseAdmin) {
+        this.data = data;
         this.idGenerator = idGenerator;
         this.dateTimeService = dateTimeService;
         this.supabaseAdmin = supabaseAdmin;
     }
 
     public List<UserDto> list() {
-        var users = dsl.selectFrom(USERS).orderBy(USERS.USERNAME).fetch();
-        Map<UUID, List<String>> rolesByUser = dsl
+        var users = data.read().selectFrom(USERS).orderBy(USERS.USERNAME).fetch();
+        Map<UUID, List<String>> rolesByUser = data.read()
                 .select(USER_ROLES.USER_ID, ROLES.CODE)
                 .from(USER_ROLES)
                 .join(ROLES).on(ROLES.ID.eq(USER_ROLES.ROLE_ID))
@@ -73,8 +73,7 @@ public final class UserService {
         String sub = supabaseAdmin.ensureUser(email, request.temporaryPassword());
         UUID id = idGenerator.nextId();
         OffsetDateTime now = now();
-        dsl.transaction(configuration -> {
-            DSLContext tx = DSL.using(configuration);
+        data.transaction(tx -> {
             tx.insertInto(USERS, USERS.ID, USERS.SUB, USERS.USERNAME, USERS.EMAIL, USERS.TENANT_ID, USERS.MUST_CHANGE_PASSWORD, USERS.CREATED_AT, USERS.UPDATED_AT)
                     .values(id, sub, username, email, request.tenantId(), true, now, now)
                     .execute();
@@ -83,16 +82,15 @@ public final class UserService {
         return new UserDto(id, sub, username, email, request.tenantId(), true, normalized(request.roles()), now, now);
     }
     public void assignRoles(UUID id, AssignRolesRequest request) {
-        var user = dsl.select(USERS.TENANT_ID).from(USERS).where(USERS.ID.eq(id)).fetchOne();
+        var user = data.read().select(USERS.TENANT_ID).from(USERS).where(USERS.ID.eq(id)).fetchOne();
         if (user == null) {
             throw new NotFoundException("User not found: " + id);
         }
-        dsl.transaction(configuration -> assignRoles(DSL.using(configuration), id, user.value1(), request.roles()));
+        data.transaction(tx -> assignRoles(tx, id, user.value1(), request.roles()));
     }
 
     public void delete(UUID id) {
-        dsl.transaction(configuration -> {
-            DSLContext tx = DSL.using(configuration);
+        data.transaction(tx -> {
             tx.deleteFrom(USER_ROLES).where(USER_ROLES.USER_ID.eq(id)).execute();
             tx.deleteFrom(USERS).where(USERS.ID.eq(id)).execute();
         });
@@ -123,7 +121,7 @@ public final class UserService {
         if (tenantId == null) {
             return PlatformSchema.RESERVED_SLUG;
         }
-        String slug = dsl.select(TENANTS.SLUG).from(TENANTS).where(TENANTS.ID.eq(tenantId)).fetchOne(TENANTS.SLUG);
+        String slug = data.read().select(TENANTS.SLUG).from(TENANTS).where(TENANTS.ID.eq(tenantId)).fetchOne(TENANTS.SLUG);
         if (slug == null) {
             throw new NotFoundException("Tenant not found: " + tenantId);
         }
@@ -132,7 +130,7 @@ public final class UserService {
 
     private void checkUsernameUnique(String username, UUID tenantId) {
         Condition tenantMatch = tenantId == null ? USERS.TENANT_ID.isNull() : USERS.TENANT_ID.eq(tenantId);
-        if (dsl.fetchExists(USERS, USERS.USERNAME.eq(username).and(tenantMatch))) {
+        if (data.read().fetchExists(USERS, USERS.USERNAME.eq(username).and(tenantMatch))) {
             throw new ConflictException("User already exists: " + username);
         }
     }

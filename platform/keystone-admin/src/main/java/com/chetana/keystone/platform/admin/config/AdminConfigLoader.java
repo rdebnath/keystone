@@ -64,12 +64,32 @@ public final class AdminConfigLoader {
     }
 
     private static AdminConfig.Database database(Map<String, String> env, JsonNode overlay, JsonNode base) {
-        return new AdminConfig.Database(
-                string(env, overlay, base, "DB_URL", "", "database", "url"),
-                string(env, overlay, base, "DB_USERNAME", "", "database", "username"),
-                string(env, overlay, base, "DB_PASSWORD", "", "database", "password"),
-                intValue(env, overlay, base, "DB_MAX_POOL_SIZE", 10, "database", "maxPoolSize"),
-                string(env, overlay, base, "DB_SCHEMA", "platform", "database", "schema"));
+        String url = string(env, overlay, base, "DB_URL", "", "database", "url");
+        String username = string(env, overlay, base, "DB_USERNAME", "", "database", "username");
+        String password = string(env, overlay, base, "DB_PASSWORD", "", "database", "password");
+        int maxPoolSize = intValue(env, overlay, base, "DB_MAX_POOL_SIZE", 10, "database", "maxPoolSize");
+        String schema = string(env, overlay, base, "DB_SCHEMA", "platform", "database", "schema");
+        return new AdminConfig.Database(url, username, password, maxPoolSize, schema,
+                read(overlay, base, username, password, maxPoolSize));
+    }
+
+    /** Read target, resolved from yaml only (no env override); username/password/pool size fall back to the primary. */
+    private static AdminConfig.Read read(JsonNode overlay, JsonNode base,
+                                         String primaryUsername, String primaryPassword, int primaryMaxPoolSize) {
+        String url = fileValue(overlay, base, "database", "read", "url");
+        String username = fileValue(overlay, base, "database", "read", "username");
+        String password = fileValue(overlay, base, "database", "read", "password");
+        int maxPoolSize = fileInt(overlay, base, primaryMaxPoolSize, "database", "read", "maxPoolSize");
+        return new AdminConfig.Read(
+                url == null ? "" : url,
+                username == null || username.isBlank() ? primaryUsername : username,
+                password == null || password.isBlank() ? primaryPassword : password,
+                maxPoolSize);
+    }
+
+    private static int fileInt(JsonNode overlay, JsonNode base, int fallback, String... path) {
+        String value = fileValue(overlay, base, path);
+        return value == null || value.isBlank() ? fallback : Integer.parseInt(value.trim());
     }
 
     private static AdminConfig.Supabase supabase(Map<String, String> env, JsonNode overlay, JsonNode base) {

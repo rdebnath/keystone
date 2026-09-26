@@ -16,7 +16,7 @@ docs/         architecture + coding guidelines
 | `platform/keystone-bom` | BOM | Pins platform module versions for apps. |
 | `platform/keystone-common` | library | Errors, ids, time, RFC 9457 problem+json. |
 | `platform/keystone-web` | library | Guice + Javalin base (wiring, filters, validation, error handling). |
-| `platform/keystone-data` | library | jOOQ/Liquibase infrastructure (DSLContext, transactions, DAO conventions). |
+| `platform/keystone-data` | library | jOOQ/Liquibase infrastructure (`DataAccess` read/write split — primary + read replica, `DSLContext`, transactions, DAO conventions). |
 | `platform/keystone-realtime` | library | Supabase Realtime publisher. |
 | `platform/keystone-security` | library | OIDC resource-server JWT validation + authorization. |
 | `platform/keystone-observability` | library | Micrometer metrics + structured logging. |
@@ -78,7 +78,9 @@ mvn -pl apps/inventory/server -am jib:build -Djib.to.image=<registry>/inventory
 
 Apps persist to a shared PostgreSQL database (Supabase-managed) isolated by **schema**
 (`inventory`, `platform`) — or to their own database when `database.schema` is left blank. The
-choice is per-environment configuration (`DB_URL` + optional `DB_SCHEMA`). For local development,
+choice is per-environment configuration (`DB_URL` + optional `DB_SCHEMA`). Reads are routed via a
+required `database.read.url` (configured in `application-{env}.yaml`): set it equal to
+`database.url` for read/write on one instance, or to a read-replica URL. For local development,
 `docker compose up -d` starts one PostgreSQL (database `keystone`) and initializes the `inventory`
 and `platform` schemas + tables on first start (via `docker/initdb/init.sql`, generated from the
 Liquibase changelogs). The app still migrates idempotently at startup (and `SchemaTool migrate`

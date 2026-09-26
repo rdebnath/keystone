@@ -5,7 +5,7 @@ import com.google.inject.Singleton;
 import com.chetana.keystone.common.error.ValidationException;
 import com.chetana.keystone.common.id.IdGenerator;
 import com.chetana.keystone.common.time.DateTimeService;
-import org.jooq.DSLContext;
+import com.chetana.keystone.data.DataAccess;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -17,19 +17,19 @@ import static com.chetana.keystone.inventory.jooq.Tables.ITEMS;
 @Singleton
 public final class ItemService {
 
-    private final DSLContext dsl;
+    private final DataAccess data;
     private final IdGenerator idGenerator;
     private final DateTimeService dateTimeService;
 
     @Inject
-    public ItemService(DSLContext dsl, IdGenerator idGenerator, DateTimeService dateTimeService) {
-        this.dsl = dsl;
+    public ItemService(DataAccess data, IdGenerator idGenerator, DateTimeService dateTimeService) {
+        this.data = data;
         this.idGenerator = idGenerator;
         this.dateTimeService = dateTimeService;
     }
 
     public List<ItemDto> list() {
-        return dsl.selectFrom(ITEMS)
+        return data.read().selectFrom(ITEMS)
                 .orderBy(ITEMS.NAME)
                 .fetch()
                 .map(r -> new ItemDto(r.getId(), r.getName(), r.getQuantity(), r.getVersion(),
@@ -40,10 +40,18 @@ public final class ItemService {
         validate(request);
         UUID id = idGenerator.nextId();
         OffsetDateTime now = dateTimeService.now().atOffset(ZoneOffset.UTC);
-        dsl.insertInto(ITEMS, ITEMS.ID, ITEMS.NAME, ITEMS.QUANTITY, ITEMS.VERSION, ITEMS.CREATED_AT, ITEMS.UPDATED_AT)
+        data.write().insertInto(ITEMS, ITEMS.ID, ITEMS.NAME, ITEMS.QUANTITY, ITEMS.VERSION, ITEMS.CREATED_AT, ITEMS.UPDATED_AT)
                 .values(id, request.name(), request.quantity(), 0L, now, now)
                 .execute();
-        return new ItemDto(id, request.name(), request.quantity(), 0L, now, now);
+        // Read back from the primary so the response reflects the just-committed write regardless
+        // of replica lag (read-your-writes).
+        return data.readFromPrimary(() -> fetch(id));
+    }
+
+    private ItemDto fetch(UUID id) {
+        var record = data.read().selectFrom(ITEMS).where(ITEMS.ID.eq(id)).fetchOne();
+        return new ItemDto(record.getId(), record.getName(), record.getQuantity(), record.getVersion(),
+                record.getCreatedAt(), record.getUpdatedAt());
     }
 
     private static void validate(CreateItemRequest request) {

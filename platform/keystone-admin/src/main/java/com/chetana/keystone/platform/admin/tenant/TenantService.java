@@ -7,9 +7,8 @@ import com.chetana.keystone.common.error.NotFoundException;
 import com.chetana.keystone.common.error.ValidationException;
 import com.chetana.keystone.common.id.IdGenerator;
 import com.chetana.keystone.common.time.DateTimeService;
+import com.chetana.keystone.data.DataAccess;
 import com.chetana.keystone.platform.admin.data.Platform;
-import org.jooq.DSLContext;
-import org.jooq.impl.DSL;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -26,19 +25,19 @@ import static com.chetana.keystone.platform.admin.jooq.Tables.USERS;
 @Singleton
 public final class TenantService {
 
-    private final DSLContext dsl;
+    private final DataAccess data;
     private final IdGenerator idGenerator;
     private final DateTimeService dateTimeService;
 
     @Inject
-    public TenantService(@Platform DSLContext dsl, IdGenerator idGenerator, DateTimeService dateTimeService) {
-        this.dsl = dsl;
+    public TenantService(@Platform DataAccess data, IdGenerator idGenerator, DateTimeService dateTimeService) {
+        this.data = data;
         this.idGenerator = idGenerator;
         this.dateTimeService = dateTimeService;
     }
 
     public List<TenantDto> list() {
-        return dsl.selectFrom(TENANTS)
+        return data.read().selectFrom(TENANTS)
                 .orderBy(TENANTS.NAME)
                 .fetch()
                 .map(r -> new TenantDto(r.getId(), r.getName(), r.getSlug(), r.getCreatedAt(), r.getUpdatedAt()));
@@ -49,7 +48,7 @@ public final class TenantService {
         String slug = TenantSlug.normalize(request.slug());
         UUID id = idGenerator.nextId();
         OffsetDateTime now = now();
-        int inserted = dsl.insertInto(TENANTS, TENANTS.ID, TENANTS.NAME, TENANTS.SLUG, TENANTS.CREATED_AT, TENANTS.UPDATED_AT)
+        int inserted = data.write().insertInto(TENANTS, TENANTS.ID, TENANTS.NAME, TENANTS.SLUG, TENANTS.CREATED_AT, TENANTS.UPDATED_AT)
                 .values(id, name, slug, now, now)
                 .onConflictDoNothing()
                 .execute();
@@ -62,12 +61,12 @@ public final class TenantService {
     public TenantDto update(UUID id, TenantRequest request) {
         String name = validateName(request);
         String slug = TenantSlug.normalize(request.slug());
-        var existing = dsl.selectFrom(TENANTS).where(TENANTS.ID.eq(id)).fetchOne();
+        var existing = data.read().selectFrom(TENANTS).where(TENANTS.ID.eq(id)).fetchOne();
         if (existing == null) {
             throw new NotFoundException("Tenant not found: " + id);
         }
         OffsetDateTime now = now();
-        dsl.update(TENANTS)
+        data.write().update(TENANTS)
                 .set(TENANTS.NAME, name)
                 .set(TENANTS.SLUG, slug)
                 .set(TENANTS.UPDATED_AT, now)
@@ -77,12 +76,11 @@ public final class TenantService {
     }
 
     public void delete(UUID id) {
-        int users = dsl.fetchCount(USERS, USERS.TENANT_ID.eq(id));
+        int users = data.read().fetchCount(USERS, USERS.TENANT_ID.eq(id));
         if (users > 0) {
             throw new ConflictException("Cannot delete tenant with users: " + id);
         }
-        dsl.transaction(configuration -> {
-            DSLContext tx = DSL.using(configuration);
+        data.transaction(tx -> {
             tx.deleteFrom(USER_ROLES).where(USER_ROLES.TENANT_ID.eq(id)).execute();
             tx.deleteFrom(TENANTS).where(TENANTS.ID.eq(id)).execute();
         });

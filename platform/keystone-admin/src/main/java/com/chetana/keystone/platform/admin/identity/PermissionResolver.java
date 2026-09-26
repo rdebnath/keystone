@@ -2,9 +2,9 @@ package com.chetana.keystone.platform.admin.identity;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.chetana.keystone.data.DataAccess;
 import com.chetana.keystone.platform.admin.data.Platform;
 import org.jooq.Condition;
-import org.jooq.DSLContext;
 
 import java.util.Set;
 import java.util.UUID;
@@ -22,11 +22,11 @@ import static com.chetana.keystone.platform.admin.jooq.Tables.USERS;
 @Singleton
 public final class PermissionResolver {
 
-    private final DSLContext dsl;
+    private final DataAccess data;
 
     @Inject
-    public PermissionResolver(@Platform DSLContext dsl) {
-        this.dsl = dsl;
+    public PermissionResolver(@Platform DataAccess data) {
+        this.data = data;
     }
 
     public Set<String> resolve(String sub, UUID tenantId) {
@@ -34,7 +34,7 @@ public final class PermissionResolver {
                 ? USER_ROLES.TENANT_ID.isNull()
                 : USER_ROLES.TENANT_ID.isNull().or(USER_ROLES.TENANT_ID.eq(tenantId));
 
-        return dsl.select(PERMISSIONS.CODE)
+        return data.read().select(PERMISSIONS.CODE)
                 .from(USERS)
                 .join(USER_ROLES).on(USER_ROLES.USER_ID.eq(USERS.ID))
                 .join(ROLE_PERMISSIONS).on(ROLE_PERMISSIONS.ROLE_ID.eq(USER_ROLES.ROLE_ID))

@@ -52,12 +52,32 @@ public final class ConfigLoader {
     }
 
     private static AppConfig.Database database(Map<String, String> env, JsonNode overlay, JsonNode base) {
-        return new AppConfig.Database(
-                string(env, overlay, base, "DB_URL", "database", "url"),
-                string(env, overlay, base, "DB_USERNAME", "database", "username"),
-                string(env, overlay, base, "DB_PASSWORD", "database", "password"),
-                intValue(env, overlay, base, "DB_MAX_POOL_SIZE", 10, "database", "maxPoolSize"),
-                string(env, overlay, base, "DB_SCHEMA", "database", "schema"));
+        String url = string(env, overlay, base, "DB_URL", "database", "url");
+        String username = string(env, overlay, base, "DB_USERNAME", "database", "username");
+        String password = string(env, overlay, base, "DB_PASSWORD", "database", "password");
+        int maxPoolSize = intValue(env, overlay, base, "DB_MAX_POOL_SIZE", 10, "database", "maxPoolSize");
+        String schema = string(env, overlay, base, "DB_SCHEMA", "database", "schema");
+        return new AppConfig.Database(url, username, password, maxPoolSize, schema,
+                read(overlay, base, username, password, maxPoolSize));
+    }
+
+    /** Read target, resolved from yaml only (no env override); username/password/pool size fall back to the primary. */
+    private static AppConfig.Read read(JsonNode overlay, JsonNode base,
+                                       String primaryUsername, String primaryPassword, int primaryMaxPoolSize) {
+        String url = fileValue(overlay, base, "database", "read", "url");
+        String username = fileValue(overlay, base, "database", "read", "username");
+        String password = fileValue(overlay, base, "database", "read", "password");
+        int maxPoolSize = fileInt(overlay, base, primaryMaxPoolSize, "database", "read", "maxPoolSize");
+        return new AppConfig.Read(
+                url == null ? "" : url,
+                username == null || username.isBlank() ? primaryUsername : username,
+                password == null || password.isBlank() ? primaryPassword : password,
+                maxPoolSize);
+    }
+
+    private static int fileInt(JsonNode overlay, JsonNode base, int fallback, String... path) {
+        String value = fileValue(overlay, base, path);
+        return value == null || value.isBlank() ? fallback : Integer.parseInt(value.trim());
     }
 
     private static AppConfig.Server server(Map<String, String> env, JsonNode overlay, JsonNode base) {

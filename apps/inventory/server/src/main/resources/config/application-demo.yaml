@@ -4,3 +4,5 @@ database:
   url: jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:6543/keystone
   username: deployment@chetanatech.com
   schema: inventory    # shared DB -> isolate by schema
+  read:
+    url: jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:6543/keystone   # read/write on one instance (== database.url)
