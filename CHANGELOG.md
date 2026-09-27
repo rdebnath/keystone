@@ -46,10 +46,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The permission model is two access levels per resource (`read-only` / `read-write`)** — the
+  platform catalog seeds `platform:<resource>:read-only|read-write` and
+  `tenant:<resource>:read-only|read-write` for tenants, roles, permissions and users (14 codes + the
+  `*` wildcard, down from 30 action-granular `create`/`read`/`update`/`delete`/`assign-role` codes).
+  A read/write grant covers read, create, update and delete; a read-only grant covers read only;
+  `PUT /api/v1/users/{id}/roles` needs `platform:user:read-write`. `POST /api/v1/permissions`
+  rejects a code that does not end in a level, and the admin UI's permission dialog now picks a
+  resource + a level instead of typing a free-text code (the `*` wildcard renders as read/write).
+  See `docs/delivery/permission-access-levels/`.
+
 - Platform admin backend/frontend moved from the standalone `apps/platform` app into the hosted
   `platform/keystone-admin` / `platform/keystone-admin-ui` libraries; `apps/platform` removed.
 - Frontend auth is now **backend-proxied** (previously `flutter_appauth`/Supabase client-side); the
   guidelines now specify backend-proxied OIDC login.
+- **Coding guidelines: JSON payloads must be typed models** — the backend now requires a Java
+  record for every JSON shape (no `Map<String, Object>`/`JsonNode` payloads, config values, or
+  third-party API responses) and the frontend a `freezed`/`json_serializable` model (no raw
+  `Map<String, dynamic>` outside a generated `fromJson` signature or a single `data`-boundary
+  conversion). See `docs/CODING_GUIDELINES_BACKEND.md` §13 and `docs/CODING_GUIDELINES_FRONTEND.md`
+  §14.
+- **JSON payloads are now typed models end to end** — the Supabase Auth adapter sends and parses
+  records (`CreateUserRequest`, `PasswordGrantRequest`, `UpdatePasswordRequest`, `GoTrueUser`,
+  `ListUsersPage`, `TokenResponse`) instead of building `Map`s and walking `JsonNode`s, the Realtime
+  broadcast body is the `RealtimeEnvelope<T>` record (the port no longer takes an untyped
+  `Object payload`), and `Principal.claims` is the typed `Claims` record rather than a raw claim
+  map.
+- **The Flutter admin UI's models are now `freezed` + `json_serializable`** — `Me`, `Tenant`, `Role`,
+  `Permission`, `User` and `Session` (`Session` moved beside them out of the API client) plus the six
+  request models generate their own `fromJson`/`toJson`/`copyWith`; the generated `*.freezed.dart`/
+  `*.g.dart` files are committed. `platform/keystone-admin-ui` gains
+  `freezed_annotation`/`json_annotation` and `freezed`/`json_serializable`/`build_runner`, and its
+- **Both Flutter packages declare the same Dart SDK constraint (`'>=3.8.0 <4.0.0'`)** —
+  `apps/inventory/frontend` is aligned with `platform/keystone-admin-ui` (which requires it for
+  `json_serializable`), so the client code shares one language version and one `dart format` style.
+- **The Flutter packages are now `dart format` clean** — a mechanical formatting pass normalised the
+  10 files in `platform/keystone-admin-ui` that were already unformatted before this change (the
+  Dart "tall" style that applies once a package's language version is 3.7+); the app's files needed
+  no change. No behaviour change: `flutter analyze` clean and `flutter test` 7/7 in the package.
 - `user_roles` primary key is `(user_id, role_id)` (its `tenant_id` is nullable); tenant-scoped role
   assignment is carried on `user_roles.tenant_id`.
 

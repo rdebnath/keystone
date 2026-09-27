@@ -7,7 +7,9 @@ import com.chetana.keystone.common.error.ValidationException;
 import com.chetana.keystone.common.id.IdGenerator;
 import com.chetana.keystone.common.time.DateTimeService;
 import com.chetana.keystone.data.DataAccess;
+import com.chetana.keystone.platform.admin.PermissionCatalog;
 import com.chetana.keystone.platform.admin.data.Platform;
+import com.chetana.keystone.platform.admin.identity.Access;
 import com.chetana.keystone.platform.admin.identity.Scope;
 
 import java.time.OffsetDateTime;
@@ -73,6 +75,10 @@ public final class PermissionService {
         }
         if (request.scope() == null) {
             throw new ValidationException("scope must not be null");
+        }
+        if (!PermissionCatalog.hasAccessLevel(request.code())) {
+            throw new ValidationException("code must end with an access level ("
+                    + String.join(", ", Access.suffixes()) + "): " + request.code());
         }
     }
 }

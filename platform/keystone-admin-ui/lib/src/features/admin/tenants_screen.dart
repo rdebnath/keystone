@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/log.dart';
 import '../../core/providers.dart';
+import '../../models/requests.dart';
 
 class TenantsScreen extends ConsumerWidget {
   const TenantsScreen({super.key});
@@ -70,13 +71,18 @@ class TenantsScreen extends ConsumerWidget {
       return;
     }
     try {
-      await ref.read(apiClientProvider).createTenant(name.text.trim(), slug.text.trim());
+      await ref
+          .read(apiClientProvider)
+          .createTenant(
+            CreateTenantRequest(name: name.text.trim(), slug: slug.text.trim()),
+          );
       ref.invalidate(tenantsProvider);
     } catch (e) {
       log.e('create tenant failed', error: e);
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Could not create tenant.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not create tenant.')),
+        );
       }
     }
   }

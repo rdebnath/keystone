@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/dialogs.dart';
 import '../../core/log.dart';
 import '../../core/providers.dart';
+import '../../models/requests.dart';
 
 class UsersScreen extends ConsumerWidget {
   const UsersScreen({super.key});
@@ -25,9 +26,11 @@ class UsersScreen extends ConsumerWidget {
                 itemCount: items.length,
                 itemBuilder: (_, i) => ListTile(
                   title: Text('${items[i].username} (${items[i].email})'),
-                  subtitle: Text(items[i].roles.isEmpty
-                      ? 'no roles'
-                      : items[i].roles.join(', ')),
+                  subtitle: Text(
+                    items[i].roles.isEmpty
+                        ? 'no roles'
+                        : items[i].roles.join(', '),
+                  ),
                 ),
               ),
       ),
@@ -67,7 +70,9 @@ class UsersScreen extends ConsumerWidget {
               TextField(
                 controller: password,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Temporary password'),
+                decoration: const InputDecoration(
+                  labelText: 'Temporary password',
+                ),
               ),
               TextField(
                 controller: roles,
@@ -96,19 +101,24 @@ class UsersScreen extends ConsumerWidget {
     try {
       final tid = tenantId.text.trim();
       final em = email.text.trim();
-      await ref.read(apiClientProvider).createUser(
-            username.text.trim(),
-            tid.isEmpty ? null : tid,
-            em.isEmpty ? null : em,
-            password.text,
-            splitList(roles.text),
+      await ref
+          .read(apiClientProvider)
+          .createUser(
+            CreateUserRequest(
+              username: username.text.trim(),
+              tenantId: tid.isEmpty ? null : tid,
+              email: em.isEmpty ? null : em,
+              temporaryPassword: password.text,
+              roles: splitList(roles.text),
+            ),
           );
       ref.invalidate(usersProvider);
     } catch (e) {
       log.e('create user failed', error: e);
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Could not create user.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not create user.')));
       }
     }
   }

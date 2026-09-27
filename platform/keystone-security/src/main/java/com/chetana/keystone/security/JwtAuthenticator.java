@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -60,7 +61,7 @@ public final class JwtAuthenticator {
         verifySignature(jwt);
         JWTClaimsSet claims = claims(jwt);
         validateClaims(claims);
-        return new Principal(claims.getSubject(), claims.getClaims());
+        return new Principal(claims.getSubject(), toClaims(claims));
     }
 
     private static SignedJWT parse(String token) {
@@ -140,5 +141,23 @@ public final class JwtAuthenticator {
         if (expiry != null && !expiry.after(new Date())) {
             throw new AccessDeniedException("Access token expired");
         }
+    }
+
+    /** Maps the validated claim set into the typed {@link Claims} Keystone models. */
+    private static Claims toClaims(JWTClaimsSet claims) {
+        return new Claims(
+                stringClaim(claims, "email"),
+                stringClaim(claims, "role"),
+                toInstant(claims.getIssueTime()),
+                toInstant(claims.getExpirationTime()));
+    }
+
+    /** An optional string claim, or {@code null} when the provider did not issue it. */
+    private static String stringClaim(JWTClaimsSet claims, String name) {
+        return claims.getClaim(name) instanceof String value ? value : null;
+    }
+
+    private static Instant toInstant(Date date) {
+        return date == null ? null : date.toInstant();
     }
 }

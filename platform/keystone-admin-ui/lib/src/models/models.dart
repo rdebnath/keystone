@@ -1,136 +1,150 @@
 /// Immutable domain models parsed from the platform REST API (no raw maps leak into the UI).
+///
+/// Models are `freezed` — immutable, value-typed, with `copyWith` — and carry
+/// `json_serializable` `fromJson`/`toJson` (`docs/CODING_GUIDELINES_FRONTEND.md` §14). Optional or
+/// defaulted wire fields are declared with `@Default(...)`, which also becomes the JSON default so
+/// a server-first deploy cannot break an older client.
 library;
 
-class Me {
-  final String sub;
-  final String? tenantId;
-  final bool mustChangePassword;
-  final List<String> permissions;
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-  const Me({
-    required this.sub,
-    this.tenantId,
-    required this.mustChangePassword,
-    required this.permissions,
-  });
+part 'models.freezed.dart';
+part 'models.g.dart';
 
+/// The authenticated caller's identity and effective permissions (`GET /api/v1/me`).
+@freezed
+abstract class Me with _$Me {
+  const Me._();
+
+  const factory Me({
+    required String sub,
+    String? tenantId,
+    @Default(false) bool mustChangePassword,
+    @Default(<String>[]) List<String> permissions,
+  }) = _Me;
+
+  factory Me.fromJson(Map<String, dynamic> json) => _$MeFromJson(json);
+
+  /// No tenant means the platform plane (the platform admin console).
   bool get isPlatformAdmin => tenantId == null;
-
-  factory Me.fromJson(Map<String, dynamic> json) => Me(
-        sub: json['sub'] as String,
-        tenantId: json['tenantId'] as String?,
-        mustChangePassword: json['mustChangePassword'] as bool? ?? false,
-        permissions: (json['permissions'] as List<dynamic>? ?? const []).cast<String>(),
-      );
 }
 
-class Tenant {
-  final String id;
-  final String name;
-  final String slug;
-  final String createdAt;
-  final String updatedAt;
+/// A tenant (`GET /api/v1/tenants`). `createdAt`/`updatedAt` stay the wire's ISO-8601 strings.
+@freezed
+abstract class Tenant with _$Tenant {
+  const factory Tenant({
+    required String id,
+    required String name,
+    @Default('') String slug,
+    @Default('') String createdAt,
+    @Default('') String updatedAt,
+  }) = _Tenant;
 
-  const Tenant({
-    required this.id,
-    required this.name,
-    required this.slug,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  factory Tenant.fromJson(Map<String, dynamic> json) => Tenant(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        slug: json['slug'] as String? ?? '',
-        createdAt: json['createdAt'] as String? ?? '',
-        updatedAt: json['updatedAt'] as String? ?? '',
-      );
+  factory Tenant.fromJson(Map<String, dynamic> json) => _$TenantFromJson(json);
 }
 
-class Role {
-  final String id;
-  final String code;
-  final String scope;
-  final List<String> permissions;
-  final String createdAt;
-  final String updatedAt;
+/// A role with its granted permission codes.
+@freezed
+abstract class Role with _$Role {
+  const factory Role({
+    required String id,
+    required String code,
+    @Default('') String scope,
+    @Default(<String>[]) List<String> permissions,
+    @Default('') String createdAt,
+    @Default('') String updatedAt,
+  }) = _Role;
 
-  const Role({
-    required this.id,
-    required this.code,
-    required this.scope,
-    required this.permissions,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  factory Role.fromJson(Map<String, dynamic> json) => Role(
-        id: json['id'] as String,
-        code: json['code'] as String,
-        scope: json['scope'] as String? ?? '',
-        permissions: (json['permissions'] as List<dynamic>? ?? const []).cast<String>(),
-        createdAt: json['createdAt'] as String? ?? '',
-        updatedAt: json['updatedAt'] as String? ?? '',
-      );
+  factory Role.fromJson(Map<String, dynamic> json) => _$RoleFromJson(json);
 }
 
-class Permission {
-  final String id;
-  final String code;
-  final String scope;
-  final String createdAt;
-  final String updatedAt;
+/// The two access levels a permission can carry — read/write (`…:read-write`: read, create, update
+/// and delete) and read-only (`…:read-only`: read only) — as the last segment of the permission
+/// code (`docs/ARCHITECTURE.md` §9.3).
+enum PermissionAccess {
+  readOnly('read-only', 'read-only'),
+  readWrite('read-write', 'read/write');
 
-  const Permission({
-    required this.id,
-    required this.code,
-    required this.scope,
-    required this.createdAt,
-    required this.updatedAt,
-  });
+  const PermissionAccess(this.suffix, this.label);
 
-  factory Permission.fromJson(Map<String, dynamic> json) => Permission(
-        id: json['id'] as String,
-        code: json['code'] as String,
-        scope: json['scope'] as String? ?? '',
-        createdAt: json['createdAt'] as String? ?? '',
-        updatedAt: json['updatedAt'] as String? ?? '',
-      );
+  /// The code suffix that carries this level.
+  final String suffix;
+
+  /// Human-readable name of the level, for the admin UI.
+  final String label;
+
+  /// Parses the level from a permission code's last segment; null when the code carries neither
+  /// suffix (the server validates the level, so this only happens for a stale catalog row).
+  static PermissionAccess? fromCode(String code) {
+    final separator = code.lastIndexOf(':');
+    if (separator < 0 || separator == code.length - 1) {
+      return null;
+    }
+    final suffix = code.substring(separator + 1);
+    for (final level in values) {
+      if (level.suffix == suffix) {
+        return level;
+      }
+    }
+    return null;
+  }
 }
 
-class User {
-  final String id;
-  final String sub;
-  final String username;
-  final String email;
-  final String? tenantId;
-  final bool mustChangePassword;
-  final List<String> roles;
-  final String createdAt;
-  final String updatedAt;
+/// A permission in a scope (`platform` or `tenant`).
+@freezed
+abstract class Permission with _$Permission {
+  const Permission._();
 
-  const User({
-    required this.id,
-    required this.sub,
-    required this.username,
-    required this.email,
-    this.tenantId,
-    required this.mustChangePassword,
-    required this.roles,
-    required this.createdAt,
-    required this.updatedAt,
-  });
+  /// The wildcard permission: grants everything, and is held only by `platform-admin`.
+  static const String wildcard = '*';
 
-  factory User.fromJson(Map<String, dynamic> json) => User(
-        id: json['id'] as String,
-        sub: json['sub'] as String,
-        username: json['username'] as String? ?? '',
-        email: json['email'] as String,
-        tenantId: json['tenantId'] as String?,
-        mustChangePassword: json['mustChangePassword'] as bool? ?? false,
-        roles: (json['roles'] as List<dynamic>? ?? const []).cast<String>(),
-        createdAt: json['createdAt'] as String? ?? '',
-        updatedAt: json['updatedAt'] as String? ?? '',
-      );
+  const factory Permission({
+    required String id,
+    required String code,
+    @Default('') String scope,
+    @Default('') String createdAt,
+    @Default('') String updatedAt,
+  }) = _Permission;
+
+  factory Permission.fromJson(Map<String, dynamic> json) =>
+      _$PermissionFromJson(json);
+
+  /// The access level the code carries. The wildcard grants everything, so it reads as read/write;
+  /// null when a code carries no level at all (a stale catalog row from before the two levels).
+  PermissionAccess? get access => code == wildcard
+      ? PermissionAccess.readWrite
+      : PermissionAccess.fromCode(code);
+}
+
+/// A user; `tenantId` is null for a platform user.
+@freezed
+abstract class User with _$User {
+  const factory User({
+    required String id,
+    required String sub,
+    @Default('') String username,
+    required String email,
+    String? tenantId,
+    @Default(false) bool mustChangePassword,
+    @Default(<String>[]) List<String> roles,
+    @Default('') String createdAt,
+    @Default('') String updatedAt,
+  }) = _User;
+
+  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
+}
+
+/// A Supabase Auth session returned by the backend-proxied login
+/// (`POST /api/v1/auth/login`).
+@freezed
+abstract class Session with _$Session {
+  const factory Session({
+    required String accessToken,
+    @Default('') String refreshToken,
+    @Default('bearer') String tokenType,
+    @Default(0) int expiresIn,
+  }) = _Session;
+
+  factory Session.fromJson(Map<String, dynamic> json) =>
+      _$SessionFromJson(json);
 }

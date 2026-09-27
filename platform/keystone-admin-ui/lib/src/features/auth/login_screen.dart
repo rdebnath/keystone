@@ -40,9 +40,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       log.e('sign-in failed', error: e);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sign in failed.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Sign in failed.')));
       }
     } finally {
       if (mounted) {

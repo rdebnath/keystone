@@ -14,3 +14,4 @@ export 'src/features/auth/auth_service.dart';
 export 'src/features/auth/change_password_screen.dart';
 export 'src/features/auth/login_screen.dart';
 export 'src/models/models.dart';
+export 'src/models/requests.dart';

@@ -3,15 +3,20 @@ package com.chetana.keystone.platform.admin.auth;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.chetana.keystone.common.error.AccessDeniedException;
+import com.chetana.keystone.platform.admin.PermissionCatalog;
+import com.chetana.keystone.platform.admin.identity.Access;
 import com.chetana.keystone.platform.admin.identity.PermissionResolver;
 import com.chetana.keystone.security.Principal;
 import io.javalin.http.Context;
 
+import java.util.List;
 import java.util.Set;
 
+import static com.chetana.keystone.platform.admin.PermissionCatalog.WILDCARD;
+
 /**
- * Enforces permission checks at the handler boundary. Code checks permissions, never roles; the
- * wildcard permission {@code *} grants everything.
+ * Enforces permission checks at the handler boundary. Code checks permissions, never roles; every
+ * resource is checked at one of two access levels and the wildcard {@code *} grants everything.
  */
 @Singleton
 public final class PermissionGuard {
@@ -33,15 +38,32 @@ public final class PermissionGuard {
         return principal;
     }
 
-    public void require(Context ctx, String permission) {
-        Principal principal = principal(ctx);
+    /** Requires read access to {@code resource} — satisfied by its read-only or read/write code. */
+    public void requireRead(Context ctx, String resource) {
+        requireAny(ctx, PermissionCatalog.acceptedCodes(resource, Access.READ_ONLY));
+    }
+
+    /** Requires write access to {@code resource} — satisfied only by its read/write code. */
+    public void requireWrite(Context ctx, String resource) {
+        requireAny(ctx, PermissionCatalog.acceptedCodes(resource, Access.READ_WRITE));
+    }
+
+    /** Pure decision: does this permission set grant one of {@code accepted}, or the wildcard? */
+    static boolean grants(Set<String> permissions, List<String> accepted) {
+        if (permissions.contains(WILDCARD)) {
+            return true;
+        }
+        return accepted.stream().anyMatch(permissions::contains);
+    }
+
+    private void requireAny(Context ctx, List<String> accepted) {
         Set<String> permissions = ctx.attribute(PERMISSIONS_ATTRIBUTE);
         if (permissions == null) {
-            permissions = resolver.resolve(principal.subject(), null);
+            permissions = resolver.resolve(principal(ctx).subject(), null);
             ctx.attribute(PERMISSIONS_ATTRIBUTE, permissions);
         }
-        if (!permissions.contains("*") && !permissions.contains(permission)) {
-            throw new AccessDeniedException("Missing permission: " + permission);
+        if (!grants(permissions, accepted)) {
+            throw new AccessDeniedException("Missing permission: " + String.join(" or ", accepted));
         }
     }
 }

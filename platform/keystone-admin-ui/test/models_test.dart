@@ -28,7 +28,11 @@ void main() {
 
   group('Tenant', () {
     test('should parse slug', () {
-      final tenant = Tenant.fromJson({'id': 'i', 'name': 'Acme', 'slug': 'acme'});
+      final tenant = Tenant.fromJson({
+        'id': 'i',
+        'name': 'Acme',
+        'slug': 'acme',
+      });
       expect(tenant.slug, 'acme');
     });
   });
@@ -45,6 +49,47 @@ void main() {
       expect(user.username, 'alice');
       expect(user.email, 'alice@acme.com');
       expect(user.roles, ['role-a']);
+    });
+  });
+
+  group('Permission', () {
+    test('should read the access level from the code suffix', () {
+      final readOnly = Permission.fromJson({
+        'id': 'i',
+        'code': 'platform:tenant:read-only',
+        'scope': 'PLATFORM',
+      });
+      final readWrite = Permission.fromJson({
+        'id': 'i',
+        'code': 'platform:user:read-write',
+        'scope': 'PLATFORM',
+      });
+
+      expect(readOnly.access, PermissionAccess.readOnly);
+      expect(readOnly.access?.label, 'read-only');
+      expect(readWrite.access, PermissionAccess.readWrite);
+      expect(readWrite.access?.label, 'read/write');
+    });
+
+    test('should read the wildcard as read/write', () {
+      final wildcard = Permission.fromJson({
+        'id': 'i',
+        'code': '*',
+        'scope': 'PLATFORM',
+      });
+
+      expect(wildcard.access, PermissionAccess.readWrite);
+      expect(wildcard.access?.label, 'read/write');
+    });
+
+    test('should have no access level for a code without a level suffix', () {
+      final legacy = Permission.fromJson({
+        'id': 'i',
+        'code': 'platform:tenant:create',
+        'scope': 'PLATFORM',
+      });
+
+      expect(legacy.access, isNull);
     });
   });
 

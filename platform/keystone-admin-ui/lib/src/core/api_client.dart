@@ -1,39 +1,24 @@
 import 'package:dio/dio.dart';
 
 import '../models/models.dart';
-
-/// A Supabase Auth session returned by the backend-proxied login.
-class Session {
-  final String accessToken;
-  final String refreshToken;
-  final String tokenType;
-  final int expiresIn;
-
-  const Session({
-    required this.accessToken,
-    required this.refreshToken,
-    required this.tokenType,
-    required this.expiresIn,
-  });
-
-  factory Session.fromJson(Map<String, dynamic> json) => Session(
-        accessToken: json['accessToken'] as String,
-        refreshToken: json['refreshToken'] as String? ?? '',
-        tokenType: json['tokenType'] as String? ?? 'bearer',
-        expiresIn: json['expiresIn'] as int? ?? 0,
-      );
-}
+import '../models/requests.dart';
 
 /// REST client for the Keystone backend (inventory + platform admin). The bearer token is
 /// attached by the interceptor; the UI never talks to `dio` directly.
+///
+/// Request bodies are the typed models in `models/requests.dart`, and a response is parsed
+/// through its model's `fromJson` in the same statement, so no `Map<String, dynamic>` outlives the
+/// call (`docs/CODING_GUIDELINES_FRONTEND.md` §14).
 class ApiClient {
   final Dio dio;
 
   ApiClient(this.dio);
 
-  Future<Session> login(String identifier, String password) async {
-    final res = await dio.post<Map<String, dynamic>>('/api/v1/auth/login',
-        data: {'identifier': identifier, 'password': password});
+  Future<Session> login(LoginRequest request) async {
+    final res = await dio.post<Map<String, dynamic>>(
+      '/api/v1/auth/login',
+      data: request.toJson(),
+    );
     return Session.fromJson(res.data!);
   }
 
@@ -42,8 +27,8 @@ class ApiClient {
     return Me.fromJson(res.data!);
   }
 
-  Future<void> changePassword(String password) async {
-    await dio.post<void>('/api/v1/me/password', data: {'password': password});
+  Future<void> changePassword(ChangePasswordRequest request) async {
+    await dio.post<void>('/api/v1/me/password', data: request.toJson());
   }
 
   Future<List<Tenant>> tenants() async {
@@ -51,9 +36,11 @@ class ApiClient {
     return _list(res.data, Tenant.fromJson);
   }
 
-  Future<Tenant> createTenant(String name, String slug) async {
-    final res = await dio.post<Map<String, dynamic>>('/api/v1/tenants',
-        data: {'name': name, 'slug': slug});
+  Future<Tenant> createTenant(CreateTenantRequest request) async {
+    final res = await dio.post<Map<String, dynamic>>(
+      '/api/v1/tenants',
+      data: request.toJson(),
+    );
     return Tenant.fromJson(res.data!);
   }
 
@@ -62,9 +49,11 @@ class ApiClient {
     return _list(res.data, Role.fromJson);
   }
 
-  Future<Role> createRole(String code, String scope, List<String> permissions) async {
-    final res = await dio.post<Map<String, dynamic>>('/api/v1/roles',
-        data: {'code': code, 'scope': scope, 'permissions': permissions});
+  Future<Role> createRole(CreateRoleRequest request) async {
+    final res = await dio.post<Map<String, dynamic>>(
+      '/api/v1/roles',
+      data: request.toJson(),
+    );
     return Role.fromJson(res.data!);
   }
 
@@ -73,9 +62,11 @@ class ApiClient {
     return _list(res.data, Permission.fromJson);
   }
 
-  Future<Permission> createPermission(String code, String scope) async {
-    final res = await dio.post<Map<String, dynamic>>('/api/v1/permissions',
-        data: {'code': code, 'scope': scope});
+  Future<Permission> createPermission(CreatePermissionRequest request) async {
+    final res = await dio.post<Map<String, dynamic>>(
+      '/api/v1/permissions',
+      data: request.toJson(),
+    );
     return Permission.fromJson(res.data!);
   }
 
@@ -84,19 +75,18 @@ class ApiClient {
     return _list(res.data, User.fromJson);
   }
 
-  Future<User> createUser(
-      String username, String? tenantId, String? email, String temporaryPassword, List<String> roles) async {
-    final res = await dio.post<Map<String, dynamic>>('/api/v1/users', data: {
-      'username': username,
-      'tenantId': tenantId,
-      'email': email,
-      'temporaryPassword': temporaryPassword,
-      'roles': roles,
-    });
+  Future<User> createUser(CreateUserRequest request) async {
+    final res = await dio.post<Map<String, dynamic>>(
+      '/api/v1/users',
+      data: request.toJson(),
+    );
     return User.fromJson(res.data!);
   }
 
-  List<T> _list<T>(List<dynamic>? data, T Function(Map<String, dynamic>) fromJson) {
+  List<T> _list<T>(
+    List<dynamic>? data,
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
     return (data ?? const [])
         .map((e) => fromJson(e as Map<String, dynamic>))
         .toList();

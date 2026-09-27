@@ -1,9 +1,9 @@
 package com.chetana.keystone.security;
 
-import java.util.Map;
-
 /**
- * An authenticated caller (the JWT {@code sub} plus the full claim set).
+ * An authenticated caller: the JWT {@code sub} plus the provider claims Keystone models as
+ * {@link Claims}. The raw token claim map is never exposed (see
+ * docs/CODING_GUIDELINES_BACKEND.md §13).
  */
-public record Principal(String subject, Map<String, Object> claims) {
+public record Principal(String subject, Claims claims) {
 }

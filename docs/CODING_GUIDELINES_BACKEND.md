@@ -65,6 +65,8 @@ deliberately enabled.
 - **Preview/incubator features** (`Structured Concurrency`, `Primitive Types in Patterns`,
   Vector API, …) in shipped code without explicit sign-off.
 - **Raw types**, `var` in non-obvious positions, and reflection where a typed API exists.
+- **Ad-hoc JSON shapes** — `Map<String, Object>`, `JsonNode`/`ObjectNode`, or `List<Map<…>>`
+  standing in for a payload. Declare a record instead (§13).
 
 ## 3. Programming Style: Functional by Default
 
@@ -177,7 +179,9 @@ com.acme.keystone
 - **`application`** defines **ports** (interfaces) that `persistence` implements — so the
   service layer depends on abstractions, not on jOOQ/DAO details directly.
 - **DTOs are records** and are defined where they are produced (request DTOs in `api`,
-  response/projection DTOs may live in `application`).
+  response/projection DTOs may live in `application`). Every JSON payload — including
+  third-party API bodies and config documents — is a record too: never a `Map` or a
+  `JsonNode` (§13).
 - Mapping between row/record ↔ DTO is explicit (a `*Mapper` component or a constructor);
   never expose persistence types from `api` handlers.
 
@@ -384,7 +388,8 @@ broadcast path — there is no self-managed nginx or broker.
 ### Request/Response (REST — Javalin)
 
 - JSON over HTTP via **Javalin** (embedded Jetty). Route handlers + records for
-  request/response bodies.
+  request/response bodies: every body is a typed record at the boundary, never a `Map` or
+  `JsonNode` (§13).
 - **Route organization**: feature-scoped handler classes register their own routes under a
   versioned path group (`app.routes(...)`, `path("/api/v1", ...)`). Use nouns, not verbs, in
   resource paths.
@@ -416,7 +421,8 @@ Conventions:
 - **Channels** are namespaced and versioned (e.g. `orders.{id}`, per tenant where
   multi-tenancy requires it). Document each channel.
 - **Broadcast payloads are immutable records** with an event id, timestamp, aggregate id,
-  and version. Never publish persistence rows or internal domain objects directly.
+  and version (§13) — never a `Map` or an `ObjectNode`. Never publish persistence rows or
+  internal domain objects directly.
 - **Publishing from Java**: publish through a `RealtimePublisher` port (Supabase Realtime
   broadcast API over HTTPS, or a server-side Realtime client); never call Supabase directly
   from handlers. Use the **service-role key** server-side only.
@@ -485,7 +491,114 @@ Conventions:
   SQL), no dynamic SQL string building, sanitize output, protect against mass-assignment by
   never binding directly to DTOs from request bodies without explicit mapping.
 
-## 13. Code Review Checklist
+## 13. JSON & Typed Payloads
+
+Every JSON document that crosses a boundary — a REST request/response body, a Realtime
+broadcast payload, a config file, or a third-party API (Supabase Auth/GoTrue, the Realtime
+broadcast API) — is modelled as a **record** (or a sealed interface of records) *before* the
+rest of the code sees it. An ad-hoc `Map`/`JsonNode` shape is not a model: it loses the
+compiler, the validator, and the documentation, and it defers every field-name typo to
+runtime.
+
+### Rules
+
+- **One record per wire shape.** Name it for the payload (`CreateItemRequest`, `ItemDto`,
+  `CreateUserRequest`) and declare it where it is produced — request/response DTOs in `api`,
+  adapter-local records beside the client that consumes them (§5). Components are the actual
+  fields; no "rest" map for the leftovers.
+- **No untyped containers as payload types.** `Map<String, Object>`, `Map<String, String>`,
+  `List<Map<…>>`, `Object`, and `JsonNode`/`ObjectNode`/`ArrayNode` are not acceptable as a
+  method parameter/return type, a field, or a record component. The moment you write
+  `node.path("id").asText()` or `String.valueOf(map.get("id"))`, you are missing a record.
+- **JSON names live in one place.** Map them explicitly (`@JsonProperty("email_confirm")`) or
+  with a naming strategy on the record
+  (`@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)` when the whole payload is
+  snake_case) instead of repeating string keys at every call site.
+- **Serialize through the injected `ObjectMapper`** (§6 — the singleton `WebModule`
+  configures): `readValue(body, MyDto.class)`, `writeValueAsString(dto)`, and
+  `new TypeReference<List<ItemDto>>() {}` for generic envelopes. Never concatenate JSON
+  strings, and never build a `Map` only to serialize it.
+- **Adapters return records, not trees.** An outbound client (`SupabaseHttpAdminClient`, a
+  Realtime publisher) converts a third-party response into records before returning. If
+  generic traversal is genuinely unavoidable, keep the `JsonNode` **private to the adapter**
+  (a package-private helper taking `JsonNode`), say why in a comment, and convert to a record
+  before the value leaves.
+- **Config is typed.** A `ConfigLoader` may walk a document tree to apply per-key file/env
+  precedence, but it resolves into the immutable `AppConfig` record (§5); the tree must not
+  escape the loader.
+- **Validate on the way in** with Jakarta Validation on the request record (§8), so a missing
+  or malformed field fails as a `400` at the boundary rather than as a `ClassCastException` or
+  `NPE` deeper in the service.
+- **Tolerate unknown fields** on third-party payloads (`@JsonIgnoreProperties(ignoreUnknown = true)`)
+  so a provider adding a field does not break parsing.
+- **`jsonb` columns**: read them through jOOQ's generated record or `into(...)` and map into a
+  record — do not leak `JsonNode` out of `persistence`.
+- **The same shape is mirrored on the client**: the response DTO is the contract the Flutter
+  model declares (`docs/CODING_GUIDELINES_FRONTEND.md` §14).
+
+### Allowed exceptions
+
+1. The `ObjectMapper` itself is injected infrastructure; this rule is about payload *shapes*,
+   not about Jackson.
+2. Generic tree traversal kept **internal** to a config loader or a third-party adapter, as
+   described above.
+3. Opaque JSON the application only stores and forwards verbatim (genuinely arbitrary blobs),
+   confined to one adapter and documented as such.
+
+Anything else needs a reviewed justification in the PR, with the reason stated in a comment.
+
+### Example — wrong
+
+```java
+// Anti-pattern: the Map *is* the DTO. Keys are unchecked strings; validation,
+// documentation, and rename-safety are gone.
+Map<String, Object> body = Map.of(
+        "email", email,
+        "password", password,
+        "email_confirm", true);
+objectMapper.writeValueAsString(body);
+
+// Anti-pattern: JsonNode escapes the adapter into the service/domain.
+JsonNode page = objectMapper.readTree(response.body());
+for (JsonNode user : page.path("users")) {
+    if (email.equalsIgnoreCase(user.path("email").asText())) {
+        return user.path("id").asText();
+    }
+}
+```
+
+### Example — right
+
+```java
+/** GoTrue "create user" request body (Supabase Auth admin API). */
+record CreateUserRequest(
+        String email,
+        String password,
+        @JsonProperty("email_confirm") boolean emailConfirm) {
+}
+
+/** One entry of the GoTrue "list users" response body. */
+record GoTrueUser(String id, String email) {
+}
+
+/** GoTrue "list users" response body: {@code { "users": [...] }}. */
+@JsonIgnoreProperties(ignoreUnknown = true)
+record ListUsersResponse(List<GoTrueUser> users) {
+}
+
+// Call site: named, compiler-checked components — no string keys.
+objectMapper.writeValueAsString(new CreateUserRequest(email, password, true));
+
+// Adapter boundary: parse once into records, return a plain value.
+private Optional<String> findSub(String responseBody, String email) throws IOException {
+    return objectMapper.readValue(responseBody, ListUsersResponse.class).users().stream()
+            .filter(user -> email.equalsIgnoreCase(user.email()))
+            .map(GoTrueUser::id)
+            .findFirst();
+}
+```
+
+## 14. Code Review Checklist
 
 Before merging, confirm:
 
@@ -494,6 +607,9 @@ Before merging, confirm:
 - [ ] No preview features, no string templates, no `null` in public APIs
 - [ ] No deprecated JDK/Guice/Javalin/jOOQ/third-party APIs; build free of deprecation warnings
 - [ ] Persistence rows/DAOs are not leaked into handlers; DTO records are used at the boundary
+- [ ] No `Map<String, Object>`/`JsonNode` payloads — every JSON body, broadcast payload, config
+      value, and third-party API response is a record (§13)
+- [ ] Request DTOs are validated and unknown JSON fields are tolerated on third-party payloads
 - [ ] Transactions are at the service boundary; N+1 traps avoided (explicit joins)
 - [ ] Constructor injection only; no static `Injector`/service-locator; modules are explicit
 - [ ] Behavior lives on `@Singleton` instance methods, not `static`; `static` only for pure functions and a thin `main`

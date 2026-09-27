@@ -305,8 +305,14 @@ Flutter client          Supabase Realtime              Java backend
   **permissions only, never roles**, so the role taxonomy can change without a code change.
 - **Effective permissions** = the union of permissions across all of a user's roles, resolved
   in the current tenant context.
-- Permission codes are namespaced: `platform:tenant:create`, `tenant:user:create`,
-  `tenant:role:assign`, and domain permissions such as `inventory:item:write`.
+- Permission codes are namespaced `<scope>:<resource>:<level>`, and there are exactly **two access
+  levels**: `read-write` (read, create, update and delete) and `read-only` (read only). A
+  read/write grant also satisfies a read-only check. Examples: `platform:tenant:read-write`,
+  `tenant:user:read-only`, and domain permissions such as `inventory:item:read-write`.
+- The catalog seeds both levels for every resource (`platform:<resource>:*` and
+  `tenant:<resource>:*` for tenants, roles, permissions and users) plus the `*` wildcard, which only
+  `platform-admin` holds. Role assignment is a write on the user resource
+  (`platform:user:read-write`), not a permission of its own.
 
 ### 9.4 Schema
 

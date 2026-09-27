@@ -9,6 +9,8 @@ import io.javalin.config.RoutesConfig;
 
 import java.util.UUID;
 
+import static com.chetana.keystone.platform.admin.PermissionCatalog.PLATFORM_ROLE;
+
 /**
  * REST routes for the {@code roles} resource.
  */
@@ -27,25 +29,25 @@ public final class RoleHandler implements RouteConfigurer {
     @Override
     public void configure(RoutesConfig routes) {
         routes.get("/api/v1/roles", ctx -> {
-            guard.require(ctx, "platform:role:read");
+            guard.requireRead(ctx, PLATFORM_ROLE);
             ctx.json(service.list());
         });
 
         routes.post("/api/v1/roles", ctx -> {
-            guard.require(ctx, "platform:role:create");
+            guard.requireWrite(ctx, PLATFORM_ROLE);
             RoleRequest request = ctx.bodyAsClass(RoleRequest.class);
             ctx.status(201).json(service.create(request));
         });
 
         routes.patch("/api/v1/roles/{id}", ctx -> {
-            guard.require(ctx, "platform:role:update");
+            guard.requireWrite(ctx, PLATFORM_ROLE);
             UUID id = Ids.uuid(ctx.pathParam("id"));
             RoleRequest request = ctx.bodyAsClass(RoleRequest.class);
             ctx.json(service.update(id, request));
         });
 
         routes.delete("/api/v1/roles/{id}", ctx -> {
-            guard.require(ctx, "platform:role:delete");
+            guard.requireWrite(ctx, PLATFORM_ROLE);
             UUID id = Ids.uuid(ctx.pathParam("id"));
             service.delete(id);
             ctx.status(204);

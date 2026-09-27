@@ -3,6 +3,7 @@ package com.chetana.keystone.platform.admin.auth;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.multibindings.Multibinder;
+import com.chetana.keystone.security.Claims;
 import com.chetana.keystone.security.Principal;
 import com.chetana.keystone.web.CorsConfig;
 import com.chetana.keystone.web.RouteConfigurer;
@@ -80,7 +81,7 @@ class AuthFilterTest {
                     @Override
                     protected void configure() {
                         bind(TokenAuthenticator.class)
-                                .toInstance(token -> new Principal("sub", Map.of()));
+                                .toInstance(token -> new Principal("sub", Claims.empty()));
                         Multibinder<RouteConfigurer> routes =
                                 Multibinder.newSetBinder(binder(), RouteConfigurer.class);
                         routes.addBinding().to(AuthFilter.class);

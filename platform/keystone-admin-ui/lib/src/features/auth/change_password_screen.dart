@@ -32,8 +32,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       return;
     }
     if (_password.text != _confirm.text) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Passwords do not match.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Passwords do not match.')));
       return;
     }
     setState(() => _submitting = true);
@@ -44,8 +45,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     } catch (e) {
       log.e('password change failed', error: e);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Could not change password.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not change password.')),
+        );
       }
     } finally {
       if (mounted) {
@@ -77,16 +79,22 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                   TextFormField(
                     controller: _password,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'New password'),
-                    validator: (v) =>
-                        v == null || v.length < 8 ? 'At least 8 characters' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'New password',
+                    ),
+                    validator: (v) => v == null || v.length < 8
+                        ? 'At least 8 characters'
+                        : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _confirm,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Confirm password'),
-                    validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm password',
+                    ),
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Required' : null,
                   ),
                   const SizedBox(height: 24),
                   FilledButton(

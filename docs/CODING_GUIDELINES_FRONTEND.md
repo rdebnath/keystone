@@ -29,7 +29,10 @@ Supabase Realtime over WebSocket; the web build is hosted on Firebase Hosting.
 
 > **SDK & dependency policy.** Pin the Dart SDK, Flutter, and package versions (a committed
 > `pubspec.lock`); do not bump them opportunistically. Upgrade Flutter/Dart or a package only
-> when explicitly requested.
+> when explicitly requested. Declare the Dart SDK constraint as `'>=3.8.0 <4.0.0'` in **every**
+> Flutter package: `json_serializable` requires a language version of at least 3.8 (it refuses to
+> run below it), and an identical constraint across packages keeps the language version — and
+> therefore `dart format`'s style — uniform.
 
 > **Version discipline.** Verify against the current Flutter, Dart, Riverpod, freezed, and
 > dio reference documentation. Do not copy older idioms (e.g. `StateNotifier`,
@@ -51,7 +54,9 @@ Prefer these *stable* Dart 3 features:
 
 Avoid:
 
-- `dynamic` and raw `Map<String, dynamic>` in application code — parse into typed models.
+- `dynamic` and raw `Map<String, dynamic>` in application code — parse into typed models
+  (§14). The map is acceptable only as a generated `fromJson`/`toJson` signature and as a
+  single, immediately-converted value at the `data` boundary.
 - `!` null-assertions where the null case can be handled explicitly.
 - `late` fields unless truly lazy; prefer initialization at declaration.
 - Mutable global singletons.
@@ -145,7 +150,7 @@ Realtime**.
   model in `data`.
 - Server errors come back as RFC 9457 `application/problem+json`; parse them into a typed
   failure (see §9).
-- Never parse JSON into `dynamic` maps in the UI — always through typed models.
+- Never parse JSON into `dynamic` maps in the UI — always through typed models (§14).
 
 ### 7.2 Realtime (Supabase Realtime)
 
@@ -153,7 +158,8 @@ Realtime**.
   (see `docs/ARCHITECTURE.md` §5.2).
 - Use the **anon (publishable) key** and user token on the client; **never** the
   service-role key (server-side only).
-- Consume a typed, versioned message envelope (not raw JSON); ignore unknown versions.
+- Consume a typed, versioned message envelope (not raw JSON); ignore unknown versions, and
+  decode the envelope into a `freezed` model before touching a field (§14).
 - Treat received messages as **idempotent** — tolerate duplicates and re-delivery.
 - Implement reconnect with exponential backoff and **resubscribe** on reconnect; handle
   offline gracefully.
@@ -223,7 +229,97 @@ Realtime**.
 - Naming: `should_<behavior>_when_<condition>` (matches backend). Arrange–Act–Assert;
   deterministic, no shared mutable state between tests.
 
-## 14. Code Review Checklist
+## 14. JSON & Typed Models
+
+The client receives JSON from exactly two places — REST (`dio`, §7.1) and Supabase Realtime
+(§7.2) — and treats it the way the backend does
+(`docs/CODING_GUIDELINES_BACKEND.md` §13): **every payload becomes a typed, immutable model
+before any other code sees it.** A raw map is not a model — `json['tenantId']` is unchecked,
+survives renames silently, and turns a typo or a server-side change into a runtime
+`TypeError` in a widget.
+
+### Rules
+
+- **One model per payload and per message.** Models are **`freezed`** data classes (immutable,
+  `copyWith`, value equality) with **`json_serializable`** generated `fromJson`/`toJson` — not
+  hand-written factories that pick keys with `[]` and cast with `as`.
+- **`Map<String, dynamic>` is allowed in exactly two places**: (a) the signature of generated
+  `fromJson`/`toJson` (and inside `*.g.dart`), and (b) a *single, immediately-consumed* value
+  at the `data` boundary where `dio` has already decoded a body
+  (`final res = await dio.post<Map<String, dynamic>>(...); return Tenant.fromJson(res.data!);`).
+  It must never be a function's return type, a provider/state field, a widget parameter, or
+  anything that outlives that one conversion.
+- **No `dynamic` and no `jsonDecode` in app code.** Decoding belongs in a `fromJson` helper or
+  in a decoder at the repository boundary — never in a notifier, screen, or widget. Prefer
+  having `dio` hand back the model directly (a custom `ResponseTransformer`); either way the
+  map must not escape the conversion.
+- **Request bodies are models too.** Build a typed request object and call `.toJson()`
+  (`data: CreateTenantRequest(name: name, slug: slug).toJson()`) so the field names live in
+  the model instead of in every call site.
+- **Match the wire naming in one place**: set `fieldRename` (e.g. `FieldRename.snake`) in
+  `build.yaml` or annotate the field (`@JsonKey(name: ...)`) rather than renaming keys by hand
+  — the client mirror of the backend's `@JsonProperty`/naming strategy.
+- **Be liberal in what you accept.** Extra JSON fields are ignored by default; give new fields
+  a default or make them nullable so an old client survives a server-first deploy; map a
+  missing required field to a typed failure (§9) instead of letting a `TypeError` escape.
+- **Realtime payloads are typed too**: decode the versioned envelope (event id, timestamp,
+  aggregate id, version, payload) into a `freezed` model, switch on it exhaustively, ignore
+  unknown versions, and never index a `Map<String, dynamic>` inside the subscription callback
+  (§7.2).
+- **Keep the map in `data`.** DTO ↔ domain mapping stays in the `data` layer; `application` and
+  `presentation` only ever see models.
+
+### Example — wrong
+
+```dart
+// Anti-pattern: an inline map body plus a hand-written fromJson over an untyped map.
+final res = await dio.post<Map<String, dynamic>>('/api/v1/tenants',
+    data: {'name': name, 'slug': slug});
+return Tenant.fromJson(res.data!);
+
+class Tenant {
+  factory Tenant.fromJson(Map<String, dynamic> json) => Tenant(
+        id: json['id'] as String, // unchecked: a rename becomes a runtime TypeError
+        name: json['name'] as String,
+      );
+}
+```
+
+### Example — right
+
+```dart
+@freezed
+class Tenant with _$Tenant {
+  const factory Tenant({
+    required String id,
+    required String name,
+    required String slug,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) = _Tenant;
+
+  factory Tenant.fromJson(Map<String, dynamic> json) => _$TenantFromJson(json);
+}
+
+@freezed
+class CreateTenantRequest with _$CreateTenantRequest {
+  const factory CreateTenantRequest({required String name, required String slug}) =
+      _CreateTenantRequest;
+
+  factory CreateTenantRequest.fromJson(Map<String, dynamic> json) =>
+      _$CreateTenantRequestFromJson(json);
+}
+
+// data layer: typed in, typed out. The only map is dio's decoded body, converted in
+// the same statement and never returned.
+Future<Tenant> createTenant(CreateTenantRequest request) async {
+  final res = await dio.post<Map<String, dynamic>>('/api/v1/tenants',
+      data: request.toJson());
+  return Tenant.fromJson(res.data!);
+}
+```
+
+## 15. Code Review Checklist
 
 Before merging, confirm:
 
@@ -231,6 +327,8 @@ Before merging, confirm:
 - [ ] Constructors/functions with >7 parameters use named parameters; large models decomposed
 - [ ] Riverpod `Notifier`/`AsyncNotifier` used; no global mutable singletons
 - [ ] Typed models for JSON; no `dynamic` maps in UI; no avoidable `!` assertions
+- [ ] Every payload is a `freezed` + `json_serializable` model — no raw `Map<String, dynamic>`
+      outside a generated `fromJson` signature or a single `data`-boundary conversion (§14)
 - [ ] `dio`/Realtime access isolated in `data`; UI never talks to clients directly
 - [ ] Realtime uses the anon key only; no service-role key or secrets in any client bundle
 - [ ] Config injected via `--dart-define`/flavors; no hard-coded environment URLs
@@ -241,7 +339,7 @@ Before merging, confirm:
 - [ ] No deprecated SDK/Flutter/package APIs; `flutter analyze` free of deprecation warnings
 - [ ] Feature-first structure and go_router conventions followed
 
-## 15. Deployment
+## 16. Deployment
 
 - **Web**: build with `flutter build web` and deploy to **Firebase Hosting**
   (`firebase deploy --only hosting`) — a global CDN with TLS and atomic, previewable

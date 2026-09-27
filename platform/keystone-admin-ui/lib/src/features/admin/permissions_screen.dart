@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/log.dart';
 import '../../core/providers.dart';
+import '../../models/models.dart';
+import '../../models/requests.dart';
 
 class PermissionsScreen extends ConsumerWidget {
   const PermissionsScreen({super.key});
@@ -24,7 +26,7 @@ class PermissionsScreen extends ConsumerWidget {
                 itemCount: items.length,
                 itemBuilder: (_, i) => ListTile(
                   title: Text(items[i].code),
-                  subtitle: Text(items[i].scope),
+                  subtitle: Text(_subtitle(items[i])),
                 ),
               ),
       ),
@@ -32,8 +34,8 @@ class PermissionsScreen extends ConsumerWidget {
   }
 
   Future<void> _create(BuildContext context, WidgetRef ref) async {
-    final code = TextEditingController();
-    var scope = 'PLATFORM';
+    var resource = _resources.first;
+    var access = PermissionAccess.readOnly;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -42,21 +44,45 @@ class PermissionsScreen extends ConsumerWidget {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: code,
-                decoration: const InputDecoration(labelText: 'Code'),
-              ),
               InputDecorator(
-                decoration: const InputDecoration(labelText: 'Scope'),
+                decoration: const InputDecoration(labelText: 'Resource'),
                 child: DropdownButton<String>(
-                  value: scope,
+                  value: resource.code,
                   isExpanded: true,
                   underline: const SizedBox.shrink(),
-                  items: const ['PLATFORM', 'TENANT']
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                  items: _resources
+                      .map(
+                        (r) => DropdownMenuItem(
+                          value: r.code,
+                          child: Text(r.code),
+                        ),
+                      )
                       .toList(),
-                  onChanged: (v) => setState(() => scope = v ?? 'PLATFORM'),
+                  onChanged: (v) => setState(() {
+                    resource = _resourceFor(v);
+                  }),
                 ),
+              ),
+              InputDecorator(
+                decoration: const InputDecoration(labelText: 'Type'),
+                child: DropdownButton<PermissionAccess>(
+                  value: access,
+                  isExpanded: true,
+                  underline: const SizedBox.shrink(),
+                  items: PermissionAccess.values
+                      .map(
+                        (a) => DropdownMenuItem(value: a, child: Text(a.label)),
+                      )
+                      .toList(),
+                  onChanged: (v) => setState(() {
+                    access = v ?? PermissionAccess.readOnly;
+                  }),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Code: ${resource.code}:${access.suffix}'),
               ),
             ],
           ),
@@ -77,13 +103,21 @@ class PermissionsScreen extends ConsumerWidget {
       return;
     }
     try {
-      await ref.read(apiClientProvider).createPermission(code.text.trim(), scope);
+      await ref
+          .read(apiClientProvider)
+          .createPermission(
+            CreatePermissionRequest(
+              code: '${resource.code}:${access.suffix}',
+              scope: resource.scope,
+            ),
+          );
       ref.invalidate(permissionsProvider);
     } catch (e) {
       log.e('create permission failed', error: e);
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Could not create permission.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not create permission.')),
+        );
       }
     }
   }
@@ -103,4 +137,37 @@ class PermissionsScreen extends ConsumerWidget {
       ),
     );
   }
+
+  /// The scope and the access level a catalog row carries.
+  String _subtitle(Permission permission) {
+    final level = permission.access?.label ?? 'unknown level';
+    return '${permission.scope} · $level';
+  }
+
+  static _Resource _resourceFor(String? code) {
+    return _resources.firstWhere(
+      (r) => r.code == code,
+      orElse: () => _resources.first,
+    );
+  }
 }
+
+/// One of the platform-defined catalog resources a permission can be created for. The access level
+/// is chosen separately (a permission code is `<resource>:<level>`), so the scope is derived from
+/// the resource namespace rather than chosen by the user.
+class _Resource {
+  const _Resource(this.code, this.scope);
+
+  final String code;
+  final String scope;
+}
+
+const _resources = <_Resource>[
+  _Resource('platform:tenant', 'PLATFORM'),
+  _Resource('platform:role', 'PLATFORM'),
+  _Resource('platform:permission', 'PLATFORM'),
+  _Resource('platform:user', 'PLATFORM'),
+  _Resource('tenant:role', 'TENANT'),
+  _Resource('tenant:permission', 'TENANT'),
+  _Resource('tenant:user', 'TENANT'),
+];

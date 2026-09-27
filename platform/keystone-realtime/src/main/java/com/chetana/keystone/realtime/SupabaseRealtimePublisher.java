@@ -7,7 +7,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Map;
 
 /**
  * Publishes to Supabase Realtime over HTTPS using the JDK {@link HttpClient}.
@@ -31,10 +30,9 @@ public final class SupabaseRealtimePublisher implements RealtimePublisher {
     }
 
     @Override
-    public void publish(String channel, String event, Object payload) {
+    public void publish(RealtimeEnvelope<?> envelope) {
         try {
-            String body = objectMapper.writeValueAsString(
-                    Map.of("channel", channel, "event", event, "payload", payload));
+            String body = objectMapper.writeValueAsString(envelope);
             HttpRequest request = HttpRequest.newBuilder(endpoint)
                     .header("apikey", serviceRoleKey)
                     .header("Authorization", "Bearer " + serviceRoleKey)

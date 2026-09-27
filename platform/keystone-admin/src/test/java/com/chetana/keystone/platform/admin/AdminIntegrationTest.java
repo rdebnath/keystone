@@ -15,6 +15,7 @@ import com.chetana.keystone.platform.admin.config.AdminConfig;
 import com.chetana.keystone.platform.admin.data.PlatformDataModule;
 import com.chetana.keystone.platform.admin.supabase.Session;
 import com.chetana.keystone.platform.admin.supabase.SupabaseAdminClient;
+import com.chetana.keystone.security.Claims;
 import com.chetana.keystone.security.Principal;
 import com.chetana.keystone.web.WebModule;
 import io.javalin.Javalin;
@@ -53,6 +54,14 @@ class AdminIntegrationTest {
                     .contains("\"sub\":\"" + ADMIN_SUB + "\"")
                     .contains("\"mustChangePassword\":true")
                     .contains("\"*\"");
+
+            // The catalog is two access levels per resource.
+            var permissions = client.get("/api/v1/permissions",
+                    req -> req.header("Authorization", "Bearer test-token"));
+            assertThat(permissions.code()).isEqualTo(200);
+            assertThat(permissions.body().string())
+                    .contains("platform:tenant:read-only", "platform:tenant:read-write")
+                    .contains("tenant:user:read-only", "tenant:user:read-write");
 
             // Backend-proxied login with the reserved platform slug.
             var login = client.post("/api/v1/auth/login",
@@ -126,7 +135,7 @@ class AdminIntegrationTest {
                                 new AdminConfig.Bootstrap("admin", "admin@keystone.com", "changeit"));
                         bind(IdGenerator.class).to(UuidIdGenerator.class);
                         bind(DateTimeService.class).to(SystemDateTimeService.class);
-                        bind(TokenAuthenticator.class).toInstance(token -> new Principal(ADMIN_SUB, Map.of()));
+                        bind(TokenAuthenticator.class).toInstance(token -> new Principal(ADMIN_SUB, Claims.empty()));
                         bind(SupabaseAdminClient.class).toInstance(fakeSupabase);
                     }
                 }));

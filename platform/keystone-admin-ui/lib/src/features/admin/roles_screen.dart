@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/dialogs.dart';
 import '../../core/log.dart';
 import '../../core/providers.dart';
+import '../../models/requests.dart';
 
 class RolesScreen extends ConsumerWidget {
   const RolesScreen({super.key});
@@ -25,7 +26,9 @@ class RolesScreen extends ConsumerWidget {
                 itemCount: items.length,
                 itemBuilder: (_, i) => ListTile(
                   title: Text(items[i].code),
-                  subtitle: Text('${items[i].scope} · ${items[i].permissions.join(', ')}'),
+                  subtitle: Text(
+                    '${items[i].scope} · ${items[i].permissions.join(', ')}',
+                  ),
                 ),
               ),
       ),
@@ -64,6 +67,8 @@ class RolesScreen extends ConsumerWidget {
                 controller: perms,
                 decoration: const InputDecoration(
                   labelText: 'Permissions (comma-separated)',
+                  hintText:
+                      'platform:tenant:read-only, platform:role:read-write',
                 ),
               ),
             ],
@@ -85,17 +90,22 @@ class RolesScreen extends ConsumerWidget {
       return;
     }
     try {
-      await ref.read(apiClientProvider).createRole(
-            code.text.trim(),
-            scope,
-            splitList(perms.text),
+      await ref
+          .read(apiClientProvider)
+          .createRole(
+            CreateRoleRequest(
+              code: code.text.trim(),
+              scope: scope,
+              permissions: splitList(perms.text),
+            ),
           );
       ref.invalidate(rolesProvider);
     } catch (e) {
       log.e('create role failed', error: e);
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Could not create role.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not create role.')));
       }
     }
   }
