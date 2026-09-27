@@ -6,6 +6,8 @@ import com.google.inject.Singleton;
 import com.chetana.keystone.common.error.AccessDeniedException;
 import com.chetana.keystone.common.error.ConflictException;
 import com.chetana.keystone.platform.admin.config.AdminConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -27,6 +29,8 @@ import java.util.Optional;
  */
 @Singleton
 public final class SupabaseHttpAdminClient implements SupabaseAdminClient {
+
+    private static final Logger log = LoggerFactory.getLogger(SupabaseHttpAdminClient.class);
 
     private static final String ADMIN_USERS_PATH = "/auth/v1/admin/users";
     private static final String TOKEN_PATH = "/auth/v1/token?grant_type=password";
@@ -122,6 +126,11 @@ public final class SupabaseHttpAdminClient implements SupabaseAdminClient {
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 300) {
+                // Every non-2xx (a wrong password, a revoked service key, a rate limit, an outage) reaches
+                // the client as the same uniform 403 to prevent account enumeration — so the status and
+                // GoTrue's own code are logged here, or the operator has nothing at all to go on.
+                log.warn("Supabase password grant failed (HTTP {}, {}) — answering as invalid credentials",
+                        response.statusCode(), failureCode(response.body()));
                 throw new AccessDeniedException("Invalid username, tenant, or password.");
             }
             TokenResponse token = objectMapper.readValue(response.body(), TokenResponse.class);
@@ -166,5 +175,18 @@ public final class SupabaseHttpAdminClient implements SupabaseAdminClient {
 
     private static String stripTrailingSlash(String value) {
         return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
+    }
+
+    /**
+     * The machine-readable GoTrue code to log for a failed grant — {@code unparsable} when the body is not
+     * JSON at all, {@code unknown} when it carries neither code. Never the body and never GoTrue's
+     * {@code msg}: the payload can echo the identifier and the request carries the password (§10).
+     */
+    String failureCode(String body) {
+        try {
+            return objectMapper.readValue(body, GoTrueError.class).describe();
+        } catch (IOException | RuntimeException e) {
+            return "unparsable";
+        }
     }
 }

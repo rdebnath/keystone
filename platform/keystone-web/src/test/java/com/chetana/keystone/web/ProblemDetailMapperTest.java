@@ -19,13 +19,13 @@ class ProblemDetailMapperTest {
             protected void configure() {
                 Multibinder.newSetBinder(binder(), RouteConfigurer.class)
                         .addBinding()
-                        .toInstance(routes -> routes.get("/boom", ctx -> {
+                        .toInstance(routes -> routes.get("/boom", _ -> {
                             throw new NotFoundException("gone");
                         }));
             }
         }).getInstance(Javalin.class);
 
-        JavalinTest.test(app, (javalin, client) -> {
+        JavalinTest.test(app, (_, client) -> {
             var response = client.get("/boom");
 
             assertThat(response.getCode()).isEqualTo(404);

@@ -31,6 +31,16 @@ class ApiClient {
     await dio.post<void>('/api/v1/me/password', data: request.toJson());
   }
 
+  /// Sets another user's temporary password (`204`, no body): the backend writes it to Supabase Auth and
+  /// forces a change on that user's next login. The caller's own password goes through
+  /// [changePassword], which the backend only accepts with the current password.
+  Future<void> resetUserPassword(
+    String id,
+    ResetPasswordRequest request,
+  ) async {
+    await dio.put<void>('/api/v1/users/$id/password', data: request.toJson());
+  }
+
   Future<List<Tenant>> tenants() async {
     final res = await dio.get<List<dynamic>>('/api/v1/tenants');
     return _list(res.data, Tenant.fromJson);
@@ -42,6 +52,18 @@ class ApiClient {
       data: request.toJson(),
     );
     return Tenant.fromJson(res.data!);
+  }
+
+  Future<Tenant> updateTenant(String id, UpdateTenantRequest request) async {
+    final res = await dio.patch<Map<String, dynamic>>(
+      '/api/v1/tenants/$id',
+      data: request.toJson(),
+    );
+    return Tenant.fromJson(res.data!);
+  }
+
+  Future<void> deleteTenant(String id) async {
+    await dio.delete<void>('/api/v1/tenants/$id');
   }
 
   Future<List<Role>> roles() async {
@@ -70,8 +92,15 @@ class ApiClient {
     return Permission.fromJson(res.data!);
   }
 
-  Future<List<User>> users() async {
-    final res = await dio.get<List<dynamic>>('/api/v1/users');
+  /// Lists users: every user when [tenantId] is null, one tenant's users otherwise (the reserved
+  /// platform tenant id lists the platform users, `users.tenant_id IS NULL`).
+  Future<List<User>> users({String? tenantId}) async {
+    final res = await dio.get<List<dynamic>>(
+      '/api/v1/users',
+      queryParameters: tenantId == null
+          ? null
+          : <String, String>{'tenantId': tenantId},
+    );
     return _list(res.data, User.fromJson);
   }
 
@@ -81,6 +110,18 @@ class ApiClient {
       data: request.toJson(),
     );
     return User.fromJson(res.data!);
+  }
+
+  Future<User> updateUser(String id, UpdateUserRequest request) async {
+    final res = await dio.patch<Map<String, dynamic>>(
+      '/api/v1/users/$id',
+      data: request.toJson(),
+    );
+    return User.fromJson(res.data!);
+  }
+
+  Future<void> deleteUser(String id) async {
+    await dio.delete<void>('/api/v1/users/$id');
   }
 
   List<T> _list<T>(

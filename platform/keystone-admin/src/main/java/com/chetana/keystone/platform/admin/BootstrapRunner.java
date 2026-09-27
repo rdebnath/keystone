@@ -28,6 +28,10 @@ import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USERS;
  * Idempotent first-user bootstrap, run once at startup: seeds the permission catalog and the
  * {@code platform-admin} role (granted the wildcard {@code *} permission), provisions the platform
  * admin identity in Supabase Auth (service-role key), and assigns that role to the admin user.
+ *
+ * <p>Optional: when {@code bootstrap.enabled} is false (or {@code BOOTSTRAP_ON_START=false} in the
+ * environment) the call is a no-op and only logs, so a deployment can keep the platform's schema
+ * migrations automatic while seeding the catalog/roles out of band.
  */
 @Singleton
 public final class BootstrapRunner {
@@ -55,6 +59,11 @@ public final class BootstrapRunner {
     }
 
     public void bootstrap() {
+        if (!bootstrap.enabled()) {
+            log.info("Platform bootstrap is disabled (bootstrap.enabled=false / BOOTSTRAP_ON_START=false);"
+                    + " skipping the permission catalog, platform-admin role and admin user seed.");
+            return;
+        }
         String sub = resolveAdminSub();
         UUID userId = data.transactionResult(tx -> {
             OffsetDateTime now = now();

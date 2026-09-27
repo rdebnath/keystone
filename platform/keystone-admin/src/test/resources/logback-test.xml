@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Test-only logging configuration for this platform library — deliberately *not* in
+  src/main/resources.
+
+  A library must never ship a logging configuration: a logback.xml under src/main/resources ends up
+  inside the library's jar and becomes a second logback.xml on the classpath of every service that
+  depends on it, where it competes with the service's own configuration (Logback picks the first
+  file it finds — a classpath-ordering accident rather than a decision). Keeping it here, under
+  src/test/resources, scopes it to this module's test run: test resources are not packaged, and
+  Logback loads logback-test.xml ahead of logback.xml.
+-->
+<configuration>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.out</target>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Our own lines are the interesting ones in a test run. -->
+    <logger name="com.chetana.keystone" level="INFO"/>
+
+    <!-- Liquibase, Jetty, HikariCP, jOOQ, Testcontainers and Docker chatter is noise here. -->
+    <root level="WARN">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+</configuration>

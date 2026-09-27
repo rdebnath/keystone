@@ -48,6 +48,20 @@ final permissionsProvider = FutureProvider<List<Permission>>(
   (ref) => ref.watch(apiClientProvider).permissions(),
 );
 
-final usersProvider = FutureProvider<List<User>>(
-  (ref) => ref.watch(apiClientProvider).users(),
+/// The users of one tenant — the reserved platform tenant id for the platform plane
+/// (`users.tenant_id IS NULL`), or null for every user.
+final usersProvider = FutureProvider.family<List<User>, String?>(
+  (ref, tenantId) => ref.watch(apiClientProvider).users(tenantId: tenantId),
 );
+
+/// The tenant with [id] from the loaded tenant list (the synthetic platform tenant included), or null
+/// while the list is still loading or when no such tenant exists.
+final tenantByIdProvider = Provider.family<Tenant?, String>((ref, id) {
+  final tenants = ref.watch(tenantsProvider).valueOrNull ?? const <Tenant>[];
+  for (final tenant in tenants) {
+    if (tenant.id == id) {
+      return tenant;
+    }
+  }
+  return null;
+});

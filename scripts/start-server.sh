@@ -5,8 +5,11 @@
 #
 # Requires the same secrets the server itself needs (see README "Run an application"):
 #   DB_PASSWORD                (required) — Supabase PostgreSQL password
-#   SUPABASE_SERVICE_ROLE_KEY  (required) — platform admin console bootstrap
+#   SUPABASE_SERVICE_ROLE_KEY  (required) — platform admin console (login, password management, bootstrap)
 # Optional: APP_ENV (default dev), BOOTSTRAP_ADMIN_PASSWORD (default changeit),
+#           MIGRATE_ON_START=false (skip startup Liquibase; default true),
+#           BOOTSTRAP_ON_START=false (skip the first-user seed; default true),
+#           LOG_LEVEL=DEBUG (service log level; default INFO),
 #           REALTIME_SERVICE_ROLE_KEY (only when Realtime is enabled).
 
 set -euo pipefail

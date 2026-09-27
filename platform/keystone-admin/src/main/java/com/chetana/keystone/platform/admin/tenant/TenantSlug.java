@@ -1,6 +1,7 @@
 package com.chetana.keystone.platform.admin.tenant;
 
 import com.chetana.keystone.common.error.ValidationException;
+import com.chetana.keystone.platform.admin.PlatformSchema;
 
 import java.util.Locale;
 
@@ -21,5 +22,13 @@ public final class TenantSlug {
             throw new ValidationException("slug must contain only lowercase letters, digits, and hyphens");
         }
         return normalized;
+    }
+
+    /**
+     * Whether {@code slug} is the reserved platform slug. Such a tenant would be unreachable: the login
+     * resolver reads it as the platform plane, not as a customer tenant.
+     */
+    public static boolean isReserved(String slug) {
+        return PlatformSchema.RESERVED_SLUG.equals(slug);
     }
 }

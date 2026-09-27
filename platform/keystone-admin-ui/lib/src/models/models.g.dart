@@ -8,6 +8,7 @@ part of 'models.dart';
 
 _Me _$MeFromJson(Map<String, dynamic> json) => _Me(
   sub: json['sub'] as String,
+  username: json['username'] as String? ?? '',
   tenantId: json['tenantId'] as String?,
   mustChangePassword: json['mustChangePassword'] as bool? ?? false,
   permissions:
@@ -19,6 +20,7 @@ _Me _$MeFromJson(Map<String, dynamic> json) => _Me(
 
 Map<String, dynamic> _$MeToJson(_Me instance) => <String, dynamic>{
   'sub': instance.sub,
+  'username': instance.username,
   'tenantId': instance.tenantId,
   'mustChangePassword': instance.mustChangePassword,
   'permissions': instance.permissions,
@@ -28,6 +30,7 @@ _Tenant _$TenantFromJson(Map<String, dynamic> json) => _Tenant(
   id: json['id'] as String,
   name: json['name'] as String,
   slug: json['slug'] as String? ?? '',
+  platform: json['platform'] as bool? ?? false,
   createdAt: json['createdAt'] as String? ?? '',
   updatedAt: json['updatedAt'] as String? ?? '',
 );
@@ -36,6 +39,7 @@ Map<String, dynamic> _$TenantToJson(_Tenant instance) => <String, dynamic>{
   'id': instance.id,
   'name': instance.name,
   'slug': instance.slug,
+  'platform': instance.platform,
   'createdAt': instance.createdAt,
   'updatedAt': instance.updatedAt,
 };

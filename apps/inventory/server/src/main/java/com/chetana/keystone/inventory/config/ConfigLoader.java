@@ -23,7 +23,10 @@ import java.util.Map;
  *
  * <p>Only secrets (database password, realtime service-role key) are read from environment
  * variables (Cloud Run → Secret Manager). Every non-secret value is resolved from the yaml files.
- * The same image ships to every environment; only {@code APP_ENV} and secrets differ.
+ * The one non-secret exception is the operational startup switch {@code startup.migrateOnStart},
+ * which an environment variable ({@code MIGRATE_ON_START}) may override so the same image can be
+ * deployed with or without automatic migrations. The same image ships to every environment; only
+ * {@code APP_ENV}, secrets and that switch differ.
  */
 public final class ConfigLoader {
 
@@ -49,6 +52,7 @@ public final class ConfigLoader {
                 environment,
                 database(env, overlay, base),
                 platform(overlay, base),
+                startup(env, overlay, base),
                 server(overlay, base),
                 cors(overlay, base),
                 realtime(env, overlay, base),
@@ -86,6 +90,40 @@ public final class ConfigLoader {
 
     private static AppConfig.Platform platform(JsonNode overlay, JsonNode base) {
         return new AppConfig.Platform(fileString(overlay, base, "platform", "schema"));
+    }
+
+    private static AppConfig.Startup startup(Map<String, String> env, JsonNode overlay, JsonNode base) {
+        return new AppConfig.Startup(
+                flag(env, overlay, base, "MIGRATE_ON_START", true, "startup", "migrateOnStart"));
+    }
+
+    /**
+     * Operational on/off switches: the environment variable wins, then yaml, then the code default —
+     * so a deployment can flip a startup behavior (e.g. automatic Liquibase) without editing the
+     * environment file. Only values meant to be flipped per deployment belong here.
+     */
+    private static boolean flag(Map<String, String> env, JsonNode overlay, JsonNode base,
+                                String envKey, boolean fallback, String... path) {
+        String fromEnv = env.get(envKey);
+        if (fromEnv != null && !fromEnv.isBlank()) {
+            return parseFlag(envKey, fromEnv);
+        }
+        JsonNode node = pathNode(overlay, path);
+        if (node == null || node.isNull()) {
+            node = pathNode(base, path);
+        }
+        return node == null || node.isNull() ? fallback : node.asBoolean(fallback);
+    }
+
+    private static boolean parseFlag(String envKey, String value) {
+        String normalized = value.trim();
+        if ("true".equalsIgnoreCase(normalized)) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(normalized)) {
+            return false;
+        }
+        throw new IllegalArgumentException(envKey + " must be true or false: " + value);
     }
 
     private static AppConfig.Server server(JsonNode overlay, JsonNode base) {

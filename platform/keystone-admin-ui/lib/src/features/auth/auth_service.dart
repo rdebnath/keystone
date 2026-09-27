@@ -19,8 +19,16 @@ class AuthService {
     await storage.save(session.accessToken, session.refreshToken);
   }
 
-  Future<void> changePassword(String password) =>
-      api.changePassword(ChangePasswordRequest(password: password));
+  /// Changes the signed-in caller's own password. [currentPassword] is required unless the backend has
+  /// the caller in the forced first-login state (`Me.mustChangePassword`), where the password just used
+  /// to sign in is the proof.
+  Future<void> changePassword(String password, {String? currentPassword}) =>
+      api.changePassword(
+        ChangePasswordRequest(
+          password: password,
+          currentPassword: currentPassword,
+        ),
+      );
 
   Future<void> signOut() => storage.clear();
 }

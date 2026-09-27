@@ -196,7 +196,11 @@ image (the frontend is the exception — it uses `--dart-define` at build time).
 - `APP_ENV` (default `dev`) selects the environment file.
 - **Resolution order (highest precedence wins):** secret environment variable →
   `application-{env}.yaml` → `application.yaml` → code default. Non-secret values are resolved
-  **from yaml only** — environment variables override *secrets*, nothing else.
+  **from yaml only** — environment variables override *secrets*, nothing else. The single exception is
+  an **operational on/off switch** (e.g. `MIGRATE_ON_START`, `BOOTSTRAP_ON_START`): it is not a
+  secret, but it is resolved env-variable-first so the same image can be deployed with a startup
+  behavior on or off, and it must always have a yaml/code default that preserves the existing
+  behavior.
 - Config is one immutable `AppConfig` record with nested records per concern (database, server,
   realtime, security), resolved by a `ConfigLoader` and bound via a `ConfigModule`
   (`bind(AppConfig.class).toInstance(...)` plus each slice). Services `@Inject` the slice they
@@ -204,7 +208,8 @@ image (the frontend is the exception — it uses `--dart-define` at build time).
 - **Secrets never live in files or the repo** — `database.password`, `realtime.serviceRoleKey`,
   `supabase.serviceRoleKey`, and the bootstrap admin password are supplied via environment
   variables (Cloud Run → Secret Manager).
-- The same image ships to every environment; only `APP_ENV` and secrets differ per deployment.
+- The same image ships to every environment; only `APP_ENV` and secrets differ per deployment, plus
+  the operational startup switches (`MIGRATE_ON_START`, `BOOTSTRAP_ON_START`).
 
 ## 6. Guice — Dependency Injection & Wiring
 
@@ -398,10 +403,12 @@ broadcast path — there is no self-managed nginx or broker.
   `ctx.json(dto)` and the right status.
 - **Cross-cutting** via Javalin `before`/`after` filters (auth, correlation id, logging,
   CORS) — not duplicated in every handler.
-- **Validation**: Jakarta Validation (`@Valid`, `@NotBlank`, …) on record DTOs; return `400`
-  with field-level errors.
-- Return proper HTTP semantics: `201` for created (with `Location`), `204` for no content,
-  `404`/`409`/`422` for the right failure.
+- **Validation**: Jakarta Validation (`@Valid`, `@NotBlank`, …) on record DTOs; a rejected value
+  returns `422` with field-level errors. `400` is reserved for a request that cannot be parsed at
+  all (malformed JSON, missing body), which the framework rejects before a handler runs.
+- Return proper HTTP semantics: `201` for created (with `Location`), `204` for no content, and the
+  failure status the error deserves (§9: `404` unknown resource, `409` conflicting state, `422`
+  rejected value, `403` denied).
 - **Errors** map through one place (§9): a single `app.exception(...)` handler or shared
   mapper returns RFC 9457 `application/problem+json`; never leak stack traces or SQL.
 - Paginate list endpoints (`page`, `size`, `sort`) and return a typed page wrapper.
@@ -441,7 +448,11 @@ Conventions:
   `code`).
 - **Log at the right level**: `WARN` for expected business failures, `ERROR` for
   unexpected ones (with stack trace). Re-throw as-is — don't wrap-and-hide.
-- **Validation failures** → `400` with a list of field errors, not one big message.
+- **Validation failures** → `422` with a list of field errors, not one big message.
+- **The status mapping is fixed and shared** (`ProblemDetailMapper`): `NotFoundException` → `404`,
+  `ConflictException` → `409`, `ValidationException` → `422`, `AccessDeniedException` → `403`,
+  anything unexpected → `500`. Application code does not produce `400`: it comes from the framework
+  when a request cannot be parsed.
 
 
 ## 10. Logging & Observability
@@ -455,6 +466,13 @@ Conventions:
 - **Log levels**: `DEBUG` for flow, `INFO` for lifecycle/business milestones, `WARN` for
   recoverable anomalies, `ERROR` for failures needing action.
 - **Never log**: passwords, tokens, keys, PII (unless masked and legally required).
+- **One logging configuration, owned by the service**: each service keeps a single `logback.xml` in
+  its own `src/main/resources` (stdout, level from `LOG_LEVEL`, default `INFO`). A library must
+  never ship one — a `logback.xml` inside a library jar becomes a second candidate on the classpath
+  of every service that depends on it, so which configuration wins is a classpath-ordering accident
+  rather than a decision. A library that needs logging in its tests keeps a test-scoped
+  `src/test/resources/logback-test.xml` (never packaged, and Logback loads it ahead of
+  `logback.xml`) plus a test-scoped logging backend.
 
 ## 11. Testing
 
@@ -527,7 +545,7 @@ runtime.
   precedence, but it resolves into the immutable `AppConfig` record (§5); the tree must not
   escape the loader.
 - **Validate on the way in** with Jakarta Validation on the request record (§8), so a missing
-  or malformed field fails as a `400` at the boundary rather than as a `ClassCastException` or
+  or malformed field fails as a `422` at the boundary rather than as a `ClassCastException` or
   `NPE` deeper in the service.
 - **Tolerate unknown fields** on third-party payloads (`@JsonIgnoreProperties(ignoreUnknown = true)`)
   so a provider adding a field does not break parsing.
@@ -616,7 +634,8 @@ Before merging, confirm:
 - [ ] Constructors with >7 parameters use a hand-written builder; large records are decomposed
 - [ ] jOOQ types generated from the Liquibase changelog; no ad-hoc DDL
 - [ ] Pub/sub payloads are immutable, versioned records (not persistence types)
-- [ ] Errors are centralized (one global handler → RFC 9457 problem+json), no leaked internals
+- [ ] Errors are centralized (one global handler → RFC 9457 problem+json), no leaked internals; a
+      rejected value answers `422` (`400` only for an unparseable request)
 - [ ] Tests added and passing (`mvn test`)
 - [ ] No secrets logged or committed; schema changes are via a Liquibase changelog migration
 - [ ] `.editorconfig`/formatter applied (no formatting churn)

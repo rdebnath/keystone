@@ -30,4 +30,15 @@ class TenantSlugTest {
         assertThatThrownBy(() -> TenantSlug.normalize("my tenant")).isInstanceOf(ValidationException.class);
         assertThatThrownBy(() -> TenantSlug.normalize("my.tenant")).isInstanceOf(ValidationException.class);
     }
+
+    @Test
+    void should_reserve_the_platform_slug() {
+        assertThat(TenantSlug.isReserved(TenantSlug.normalize("keystone"))).isTrue();
+    }
+
+    @Test
+    void should_not_reserve_a_slug_that_merely_contains_the_platform_slug() {
+        assertThat(TenantSlug.isReserved(TenantSlug.normalize("keystone-corp"))).isFalse();
+        assertThat(TenantSlug.isReserved(TenantSlug.normalize("acme"))).isFalse();
+    }
 }

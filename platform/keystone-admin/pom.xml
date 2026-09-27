@@ -48,6 +48,15 @@
             <artifactId>keystone-security</artifactId>
         </dependency>
 
+        <!-- The schema-mapping Settings used by PlatformDataModule are JAXB-annotated; jOOQ ships the
+             JAXB API as an optional dependency it no longer bundles on JDK 9+. Compile-time only: no
+             XML is marshalled here. -->
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- config (YAML) -->
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
@@ -62,11 +71,6 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
             <scope>runtime</scope>
         </dependency>
 
@@ -89,6 +93,15 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Logging backend for this module's tests only (src/test/resources/logback-test.xml). A
+             library never ships a logging backend either: the service that hosts it (apps/*/server)
+             supplies one at runtime and owns the logging configuration. -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

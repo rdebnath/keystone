@@ -8,6 +8,7 @@ import java.util.UUID;
  */
 public record MeDto(
         String sub,
+        String username,
         UUID tenantId,
         boolean mustChangePassword,
         List<String> permissions) {

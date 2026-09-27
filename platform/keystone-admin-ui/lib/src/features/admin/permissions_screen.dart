@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/log.dart';
+import '../../core/errors.dart';
+import '../../core/panels.dart';
+import '../../core/permissions.dart';
 import '../../core/providers.dart';
 import '../../models/models.dart';
 import '../../models/requests.dart';
@@ -19,9 +21,17 @@ class PermissionsScreen extends ConsumerWidget {
       ),
       body: permissions.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _error(context, ref),
+        error: (error, _) => MessagePanel(
+          icon: Icons.error_outline,
+          message: apiErrorMessage(error, 'Failed to load permissions.'),
+          actionLabel: 'Retry',
+          onAction: () => ref.invalidate(permissionsProvider),
+        ),
         data: (items) => items.isEmpty
-            ? const Center(child: Text('No permissions yet'))
+            ? const MessagePanel(
+                icon: Icons.key_outlined,
+                message: 'No permissions yet.',
+              )
             : ListView.builder(
                 itemCount: items.length,
                 itemBuilder: (_, i) => ListTile(
@@ -34,7 +44,7 @@ class PermissionsScreen extends ConsumerWidget {
   }
 
   Future<void> _create(BuildContext context, WidgetRef ref) async {
-    var resource = _resources.first;
+    var resource = catalogResources.first;
     var access = PermissionAccess.readOnly;
     final ok = await showDialog<bool>(
       context: context,
@@ -50,7 +60,7 @@ class PermissionsScreen extends ConsumerWidget {
                   value: resource.code,
                   isExpanded: true,
                   underline: const SizedBox.shrink(),
-                  items: _resources
+                  items: catalogResources
                       .map(
                         (r) => DropdownMenuItem(
                           value: r.code,
@@ -82,7 +92,7 @@ class PermissionsScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Code: ${resource.code}:${access.suffix}'),
+                child: Text('Code: ${resource.codeFor(access)}'),
               ),
             ],
           ),
@@ -107,35 +117,19 @@ class PermissionsScreen extends ConsumerWidget {
           .read(apiClientProvider)
           .createPermission(
             CreatePermissionRequest(
-              code: '${resource.code}:${access.suffix}',
+              code: resource.codeFor(access),
               scope: resource.scope,
             ),
           );
       ref.invalidate(permissionsProvider);
-    } catch (e) {
-      log.e('create permission failed', error: e);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not create permission.')),
-        );
+        showApiSuccess(context, 'Permission created.');
+      }
+    } catch (error) {
+      if (context.mounted) {
+        showApiError(context, error, 'Could not create permission.');
       }
     }
-  }
-
-  Widget _error(BuildContext context, WidgetRef ref) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('Failed to load permissions'),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: () => ref.invalidate(permissionsProvider),
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
   }
 
   /// The scope and the access level a catalog row carries.
@@ -144,30 +138,10 @@ class PermissionsScreen extends ConsumerWidget {
     return '${permission.scope} · $level';
   }
 
-  static _Resource _resourceFor(String? code) {
-    return _resources.firstWhere(
+  static CatalogResource _resourceFor(String? code) {
+    return catalogResources.firstWhere(
       (r) => r.code == code,
-      orElse: () => _resources.first,
+      orElse: () => catalogResources.first,
     );
   }
 }
-
-/// One of the platform-defined catalog resources a permission can be created for. The access level
-/// is chosen separately (a permission code is `<resource>:<level>`), so the scope is derived from
-/// the resource namespace rather than chosen by the user.
-class _Resource {
-  const _Resource(this.code, this.scope);
-
-  final String code;
-  final String scope;
-}
-
-const _resources = <_Resource>[
-  _Resource('platform:tenant', 'PLATFORM'),
-  _Resource('platform:role', 'PLATFORM'),
-  _Resource('platform:permission', 'PLATFORM'),
-  _Resource('platform:user', 'PLATFORM'),
-  _Resource('tenant:role', 'TENANT'),
-  _Resource('tenant:permission', 'TENANT'),
-  _Resource('tenant:user', 'TENANT'),
-];

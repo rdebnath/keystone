@@ -272,6 +272,16 @@ Flutter client          Supabase Realtime              Java backend
   - bootstrap admin password (`BOOTSTRAP_ADMIN_PASSWORD`).
 - Non-secret values (URLs, usernames, schema names, OIDC issuer/audience/JWKS URL, port, context
   path, CORS allowed origins) live in the yaml files, not the environment.
+- **Operational startup switches are the one non-secret exception**: they have a yaml default and may
+  be flipped per deployment through an environment variable, so the same image can start with
+  automatic migrations and/or the first-user bootstrap on or off.
+  - `MIGRATE_ON_START` (yaml `startup.migrateOnStart`, default `true`) — run Liquibase at startup for
+    both schemas; `false` means migrations are applied out of band (`SchemaTool migrate` /
+    `scripts/migrate-schema.sh`) before the revision serves traffic.
+  - `BOOTSTRAP_ON_START` (yaml `bootstrap.enabled`, default `true`) — seed the permission catalog, the
+    `platform-admin` role and the first admin user at startup; `false` skips the seed entirely (so the
+    bootstrap admin credentials are then not required), and the seed is run out of band instead with
+    `BootstrapTool` / `scripts/bootstrap-admin.sh`.
 - No secrets in source, images, or logs.
 
 ## 9. Identity, Tenancy & Authorization
@@ -289,6 +299,16 @@ Flutter client          Supabase Realtime              Java backend
   (`SecurityConfig`), not a specific vendor.
 - The Java service stores only the token **`sub`** as a reference to the user; it never
   stores credentials.
+- **Password operations are proxied, never stored.** The service reads no credential, but it is the only
+  party holding the Supabase service-role key, so exactly two operations go through it: a user changing
+  **their own** password (`POST /api/v1/me/password`) must prove the current one — verified with a
+  Supabase password grant for their own Auth identity, which is why only the forced first-login flow
+  (where that password was just used to sign in, `users.must_change_password`) skips the proof — and an
+  administrator resetting **someone else's** password (`PUT /api/v1/users/{id}/password`) sets a
+  temporary password and re-arms the forced change. Both are logged server-side with the target user id
+  and the actor `sub`; no password, token or key is ever logged. Login failures stay uniform (`403`) to
+  prevent account enumeration, while *why* a Supabase grant failed (HTTP status + GoTrue code) is logged
+  for the operator instead of being returned to the client.
 
 ### 9.2 Tenancy
 
@@ -298,6 +318,14 @@ Flutter client          Supabase Realtime              Java backend
 - A **platform user** has no tenant (`users.tenant_id IS NULL`); a **tenant user** belongs to
   exactly one tenant. Single-tenant membership is the default; multi-tenant membership is a
   future extension via a join table.
+- The platform plane is surfaced to the admin console as a **synthetic tenant** named
+  `Keystone` (`PlatformSchema.PLATFORM_TENANT_NAME`, reserved slug `keystone` and reserved id
+  `00000000-0000-0000-0000-000000000000`). `GET /api/v1/tenants` returns it first with
+  `platform: true` and null timestamps; it is never persisted (real tenant ids are random v4
+  UUIDs), writes addressing it are rejected with `422`, and passing its id as `tenantId` selects
+  the platform users (`users.tenant_id IS NULL`). This lets the console list and edit platform
+  users exactly like a tenant's users. The reserved slug is also rejected for tenant creation
+  and rename, because the login resolver reads `username@keystone` as the platform plane.
 
 ### 9.3 Authorization (RBAC)
 
@@ -333,7 +361,10 @@ user_roles       (user_id FK, role_id FK, tenant_id uuid NULL, PRIMARY KEY (user
 ### 9.5 Delegated administration
 
 - **Platform admin** provisions tenants, seeds each tenant's first admin, and assigns
-  platform roles.
+  platform roles. Resetting a user's password is part of that grant: it is a write on `platform:user`
+  (`PUT /api/v1/users/{id}/password`), it sets a *temporary* password that forces a change on the user's
+  next login, and it **refuses the caller's own account** — your own password goes through the verified
+  change-password flow, so holding the user-write grant never makes the current-password proof optional.
 - **Tenant admin** creates users within their own tenant and assigns **tenant-scoped** roles
   only.
 - **Guardrails**:
@@ -349,9 +380,13 @@ user_roles       (user_id FK, role_id FK, tenant_id uuid NULL, PRIMARY KEY (user
   explicit checks in services for resource-level rules (ownership). Denial throws
   `AccessDeniedException` → RFC 9457 `403`.
 - **Frontend (UX only)**: the backend exposes the effective set via `GET /me`
-  (`sub`, `tenantId`, `permissions[]`). The Flutter client renders controls from it (Riverpod
-  + `go_router` redirect + per-resource capability flags on DTOs). The backend is the only
-  security boundary; a bypassed client still receives `403`.
+  (`sub`, `username`, `tenantId`, `permissions[]`). The Flutter client renders controls from it
+  (Riverpod + `go_router` redirect + per-resource capability flags on DTOs). The console's
+  navigation is built the same way: a section is listed only when the caller holds its
+  `<resource>:read-only` or `<resource>:read-write` code (or the `*` wildcard), and write
+  affordances require the `:read-write` code — an unreadable deep link renders a
+  "not authorized" placeholder instead of calling the API. The backend is the only security
+  boundary; a bypassed client still receives `403`.
 
 ## 10. Cross-Cutting Concerns
 

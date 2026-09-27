@@ -18,6 +18,7 @@ abstract class Me with _$Me {
 
   const factory Me({
     required String sub,
+    @Default('') String username,
     String? tenantId,
     @Default(false) bool mustChangePassword,
     @Default(<String>[]) List<String> permissions,
@@ -27,25 +28,53 @@ abstract class Me with _$Me {
 
   /// No tenant means the platform plane (the platform admin console).
   bool get isPlatformAdmin => tenantId == null;
+
+  /// Whether the caller holds [code]; the wildcard grants everything.
+  bool allows(String code) =>
+      permissions.contains(Permission.wildcard) || permissions.contains(code);
+
+  /// Whether the caller can read [resource] — its read-only code, its read/write code, or the
+  /// wildcard. Mirrors the backend's accepted codes for a read check, so the console never renders a
+  /// section the caller would be denied (`docs/ARCHITECTURE.md` §9.6: this is UX, not security).
+  bool allowsResource(String resource) =>
+      allows('$resource:${PermissionAccess.readOnly.suffix}') ||
+      allows('$resource:${PermissionAccess.readWrite.suffix}');
+
+  /// Whether the caller can create, update and delete [resource] — its read/write code, or the
+  /// wildcard.
+  bool canWrite(String resource) =>
+      allows('$resource:${PermissionAccess.readWrite.suffix}');
 }
 
 /// A tenant (`GET /api/v1/tenants`). `createdAt`/`updatedAt` stay the wire's ISO-8601 strings.
 @freezed
 abstract class Tenant with _$Tenant {
+  const Tenant._();
+
   const factory Tenant({
     required String id,
     required String name,
     @Default('') String slug,
+    @Default(false) bool platform,
     @Default('') String createdAt,
     @Default('') String updatedAt,
   }) = _Tenant;
 
   factory Tenant.fromJson(Map<String, dynamic> json) => _$TenantFromJson(json);
+
+  /// The platform plane (`users.tenant_id IS NULL`) is listed as a tenant so its users can be managed
+  /// like a tenant's; it carries the reserved id and cannot be renamed or deleted.
+  bool get isPlatform => platform;
+
+  /// The label shown for a user that belongs to this tenant.
+  String get userPlane => isPlatform ? 'Platform' : slug;
 }
 
 /// A role with its granted permission codes.
 @freezed
 abstract class Role with _$Role {
+  const Role._();
+
   const factory Role({
     required String id,
     required String code,
@@ -56,6 +85,10 @@ abstract class Role with _$Role {
   }) = _Role;
 
   factory Role.fromJson(Map<String, dynamic> json) => _$RoleFromJson(json);
+
+  /// Platform roles span tenants; tenant roles belong to one customer and may not be granted to a
+  /// platform user (`Scope` on the backend).
+  bool get isPlatformScope => scope == 'PLATFORM';
 }
 
 /// The two access levels a permission can carry — read/write (`…:read-write`: read, create, update

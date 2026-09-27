@@ -182,7 +182,8 @@ Realtime**.
 - Map transport errors (Dio exceptions, Realtime failures) to domain failures at the
   repository boundary.
 - Map HTTP status to typed failures: 401/403 → auth, 404 → not found, 409 → conflict,
-  400/422 → validation (field-level), 429 → retry/backoff, 5xx → transient server error.
+  422 → validation (field-level; a rejected value), 400 → malformed request, 429 →
+  retry/backoff, 5xx → transient server error.
 - Server `application/problem+json` (RFC 9457) maps to a typed failure; validation errors
   surface as field-level messages.
 - Show user-facing messages from a single error-mapping layer; never leak raw Dio/HTTP

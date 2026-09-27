@@ -17,6 +17,9 @@ security:
   jwksUrl: ""            # e.g. https://<ref>.supabase.co/auth/v1/.well-known/jwks.json (set per environment)
 
 bootstrap:
+  enabled: true                 # seed the permission catalog + platform-admin role + first admin user at
+                                # startup; set false (or BOOTSTRAP_ON_START=false) to skip it, e.g. when the
+                                # schema/roles are provisioned out of band (admin credentials then optional)
   adminUsername: "admin"        # login local-part of the first platform admin (admin@keystone)
   adminEmail: "admin@keystone.com"  # virtual/fake Supabase email; never delivered
   adminPassword: "changeit"     # well-known initial password; override via BOOTSTRAP_ADMIN_PASSWORD

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Inventory service logging configuration.
+
+  This is the service's own, packaged configuration — the only logback.xml in the repository that
+  governs a running service. Platform libraries must NOT ship one: a logback.xml under a library's
+  src/main/resources ends up inside its jar, so the service would have two logback.xml files on
+  its classpath and Logback would use whichever it found first — a classpath-ordering accident
+  rather than a decision. A library may keep a logging configuration for its tests only
+  (src/test/resources/logback-test.xml), which is never packaged and never reaches a service.
+
+  Output goes to stdout because the service runs on Cloud Run, which captures stdout/stderr; the
+  container writes no log files. LOG_LEVEL (default INFO) raises or lowers verbosity for one
+  environment without building a new image (LOG_LEVEL=DEBUG on a dev service, INFO in production).
+-->
+<configuration>
+
+    <variable name="LOG_LEVEL" value="${LOG_LEVEL:-INFO}"/>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.out</target>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+      jOOQ's LoggerListener logs every executed statement *with its bound parameters* at DEBUG, so
+      it would put emails, usernames and any other value straight into the log
+      (docs/CODING_GUIDELINES_BACKEND.md §10 — never log PII). Pin it at INFO so no LOG_LEVEL
+      setting can leak them; set this logger to DEBUG deliberately, and briefly, when SQL has to be
+      inspected locally.
+    -->
+    <logger name="org.jooq.tools.LoggerListener" level="INFO"/>
+
+    <root level="${LOG_LEVEL}">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+</configuration>

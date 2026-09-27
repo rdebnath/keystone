@@ -1,141 +1,99 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/dialogs.dart';
-import '../../core/log.dart';
+import '../../core/permissions.dart';
 import '../../core/providers.dart';
-import '../../models/requests.dart';
+import '../../models/models.dart';
+import 'user_editor.dart';
 
-class UsersScreen extends ConsumerWidget {
+/// Every user of the platform, with a tenant filter. The tenant drill-down ([TenantsScreen] →
+/// [TenantUsersScreen]) is the usual path; this screen is the cross-tenant view.
+class UsersScreen extends ConsumerStatefulWidget {
   const UsersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final users = ref.watch(usersProvider);
+  ConsumerState<UsersScreen> createState() => _UsersScreenState();
+}
+
+class _UsersScreenState extends ConsumerState<UsersScreen> {
+  /// The selected tenant id, or null for every tenant.
+  String? _tenantId;
+
+  @override
+  Widget build(BuildContext context) {
+    final tenants = ref.watch(tenantsProvider).valueOrNull ?? const <Tenant>[];
+    final canManage =
+        ref.watch(meProvider).valueOrNull?.canWrite(PlatformResource.user) ??
+        false;
+    final selected = _selectedTenant(tenants);
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _create(context, ref),
-        child: const Icon(Icons.add),
-      ),
-      body: users.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _error(context, ref),
-        data: (items) => items.isEmpty
-            ? const Center(child: Text('No users yet'))
-            : ListView.builder(
-                itemCount: items.length,
-                itemBuilder: (_, i) => ListTile(
-                  title: Text('${items[i].username} (${items[i].email})'),
-                  subtitle: Text(
-                    items[i].roles.isEmpty
-                        ? 'no roles'
-                        : items[i].roles.join(', '),
+      floatingActionButton: canManage && selected != null
+          ? FloatingActionButton.extended(
+              onPressed: () => showUserEditor(
+                context,
+                // A filtered list fixes the tenant; "All tenants" lets the dialog ask.
+                tenant: _tenantId == null ? null : selected,
+              ),
+              icon: const Icon(Icons.person_add_alt),
+              label: const Text('Add user'),
+            )
+          : null,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: DropdownButtonFormField<String?>(
+              initialValue: _tenantId,
+              decoration: const InputDecoration(
+                labelText: 'Tenant',
+                helperText:
+                    'Filter by tenant — Keystone holds the platform users',
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('All tenants'),
+                ),
+                ...tenants.map(
+                  (tenant) => DropdownMenuItem<String?>(
+                    value: tenant.id,
+                    child: Text(
+                      tenant.isPlatform
+                          ? '${tenant.name} (platform)'
+                          : tenant.name,
+                    ),
                   ),
                 ),
-              ),
-      ),
-    );
-  }
-
-  Future<void> _create(BuildContext context, WidgetRef ref) async {
-    final username = TextEditingController();
-    final tenantId = TextEditingController();
-    final email = TextEditingController();
-    final password = TextEditingController();
-    final roles = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Create user'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: username,
-                decoration: const InputDecoration(labelText: 'Username'),
-              ),
-              TextField(
-                controller: tenantId,
-                decoration: const InputDecoration(
-                  labelText: 'Tenant id (blank = platform user)',
-                ),
-              ),
-              TextField(
-                controller: email,
-                decoration: const InputDecoration(
-                  labelText: 'Email (blank = username@tenantid.com)',
-                ),
-              ),
-              TextField(
-                controller: password,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Temporary password',
-                ),
-              ),
-              TextField(
-                controller: roles,
-                decoration: const InputDecoration(
-                  labelText: 'Roles (comma-separated codes)',
-                ),
-              ),
-            ],
+              ],
+              onChanged: (value) => setState(() => _tenantId = value),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Create'),
+          const Divider(height: 1),
+          Expanded(
+            child: UserList(
+              tenantId: _tenantId,
+              canManage: canManage,
+              showTenant: true,
+            ),
           ),
         ],
       ),
     );
-    if (ok != true) {
-      return;
-    }
-    try {
-      final tid = tenantId.text.trim();
-      final em = email.text.trim();
-      await ref
-          .read(apiClientProvider)
-          .createUser(
-            CreateUserRequest(
-              username: username.text.trim(),
-              tenantId: tid.isEmpty ? null : tid,
-              email: em.isEmpty ? null : em,
-              temporaryPassword: password.text,
-              roles: splitList(roles.text),
-            ),
-          );
-      ref.invalidate(usersProvider);
-    } catch (e) {
-      log.e('create user failed', error: e);
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Could not create user.')));
+  }
+
+  /// The tenant new users are added to: the filter when one is set, otherwise the first real tenant.
+  Tenant? _selectedTenant(List<Tenant> tenants) {
+    for (final tenant in tenants) {
+      if (tenant.id == _tenantId) {
+        return tenant;
       }
     }
-  }
-
-  Widget _error(BuildContext context, WidgetRef ref) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('Failed to load users'),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: () => ref.invalidate(usersProvider),
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
+    for (final tenant in tenants) {
+      if (!tenant.isPlatform) {
+        return tenant;
+      }
+    }
+    return null;
   }
 }

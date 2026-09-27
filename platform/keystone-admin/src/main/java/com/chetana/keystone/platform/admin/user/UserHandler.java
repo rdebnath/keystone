@@ -30,7 +30,8 @@ public final class UserHandler implements RouteConfigurer {
     public void configure(RoutesConfig routes) {
         routes.get("/api/v1/users", ctx -> {
             guard.requireRead(ctx, PLATFORM_USER);
-            ctx.json(service.list());
+            String tenantId = ctx.queryParam("tenantId");
+            ctx.json(service.list(tenantId == null ? null : Ids.uuid(tenantId)));
         });
 
         routes.post("/api/v1/users", ctx -> {
@@ -39,11 +40,29 @@ public final class UserHandler implements RouteConfigurer {
             ctx.status(201).json(service.create(request));
         });
 
+        routes.patch("/api/v1/users/{id}", ctx -> {
+            guard.requireWrite(ctx, PLATFORM_USER);
+            UUID id = Ids.uuid(ctx.pathParam("id"));
+            UserUpdateRequest request = ctx.bodyAsClass(UserUpdateRequest.class);
+            ctx.json(service.update(id, request));
+        });
+
         routes.put("/api/v1/users/{id}/roles", ctx -> {
             guard.requireWrite(ctx, PLATFORM_USER);
             UUID id = Ids.uuid(ctx.pathParam("id"));
             AssignRolesRequest request = ctx.bodyAsClass(AssignRolesRequest.class);
             service.assignRoles(id, request);
+            ctx.status(204);
+        });
+
+        // A user's own password goes through POST /api/v1/me/password (which proves the current
+        // password); this route sets someone else's temporary password and forces a change on their
+        // next login. The caller comes from the authenticated principal, never from the body.
+        routes.put("/api/v1/users/{id}/password", ctx -> {
+            guard.requireWrite(ctx, PLATFORM_USER);
+            UUID id = Ids.uuid(ctx.pathParam("id"));
+            ResetPasswordRequest request = ctx.bodyAsClass(ResetPasswordRequest.class);
+            service.resetPassword(id, request, guard.principal(ctx).subject());
             ctx.status(204);
         });
 

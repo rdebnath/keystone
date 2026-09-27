@@ -42,6 +42,25 @@ class AdminConfigLoaderTest {
     }
 
     @Test
+    void should_bootstrap_by_default() {
+        AdminConfig config = AdminConfigLoader.load(Map.of(
+                "APP_ENV", "test",
+                "SUPABASE_SERVICE_ROLE_KEY", "service-role"));
+
+        assertThat(config.bootstrap().enabled()).isTrue();
+    }
+
+    @Test
+    void should_disable_the_bootstrap_from_the_environment() {
+        AdminConfig config = AdminConfigLoader.load(Map.of(
+                "APP_ENV", "test",
+                "SUPABASE_SERVICE_ROLE_KEY", "service-role",
+                "BOOTSTRAP_ON_START", "false"));
+
+        assertThat(config.bootstrap().enabled()).isFalse();
+    }
+
+    @Test
     void should_fail_fast_when_non_secret_supabase_url_is_missing() {
         // No application-prod.yaml: the base yaml leaves supabase.url blank -> rejected.
         assertThatThrownBy(() -> AdminConfigLoader.load(Map.of("APP_ENV", "prod")))

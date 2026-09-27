@@ -36,14 +36,16 @@ public record AdminConfig(
         if (security.jwksUrl().isBlank()) {
             throw new IllegalArgumentException("security.jwksUrl is required (set in admin-config/application-{env}.yaml)");
         }
-        if (bootstrap.adminUsername().isBlank()) {
-            throw new IllegalArgumentException("bootstrap.adminUsername is required (set in admin-config/application-{env}.yaml)");
-        }
-        if (bootstrap.adminEmail().isBlank()) {
-            throw new IllegalArgumentException("bootstrap.adminEmail is required (set in admin-config/application-{env}.yaml)");
-        }
-        if (bootstrap.adminPassword().isBlank()) {
-            throw new IllegalArgumentException("bootstrap.adminPassword is required (set BOOTSTRAP_ADMIN_PASSWORD)");
+        if (bootstrap.enabled()) {
+            if (bootstrap.adminUsername().isBlank()) {
+                throw new IllegalArgumentException("bootstrap.adminUsername is required (set in admin-config/application-{env}.yaml)");
+            }
+            if (bootstrap.adminEmail().isBlank()) {
+                throw new IllegalArgumentException("bootstrap.adminEmail is required (set in admin-config/application-{env}.yaml)");
+            }
+            if (bootstrap.adminPassword().isBlank()) {
+                throw new IllegalArgumentException("bootstrap.adminPassword is required (set BOOTSTRAP_ADMIN_PASSWORD)");
+            }
         }
     }
 
@@ -62,7 +64,14 @@ public record AdminConfig(
         }
     }
 
-    public record Bootstrap(String adminUsername, String adminEmail, String adminPassword) {
+    /**
+     * First-user bootstrap policy and credentials. When {@code enabled} is false
+     * (yaml {@code bootstrap.enabled}, or {@code BOOTSTRAP_ON_START=false} in the environment) the
+     * startup seed of the permission catalog, the {@code platform-admin} role and the admin user is
+     * skipped, and the admin credentials are no longer required — the catalog/roles are then expected
+     * to be provisioned out of band (e.g. by an explicit run of the platform bootstrap).
+     */
+    public record Bootstrap(boolean enabled, String adminUsername, String adminEmail, String adminPassword) {
         public Bootstrap {
             Objects.requireNonNull(adminUsername, "adminUsername");
             Objects.requireNonNull(adminEmail, "adminEmail");

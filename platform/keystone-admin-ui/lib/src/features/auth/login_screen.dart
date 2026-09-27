@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/branding.dart';
 import '../../core/log.dart';
+import '../../core/password_field.dart';
 import '../../core/providers.dart';
 import 'auth_service.dart';
 
@@ -16,17 +18,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _identifier = TextEditingController();
   final _password = TextEditingController();
+  final _passwordFocus = FocusNode();
   bool _submitting = false;
 
   @override
   void dispose() {
     _identifier.dispose();
     _password.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
+    // Re-entrancy guard: Enter and a button activation can both land on the same frame.
+    if (_submitting || !_formKey.currentState!.validate()) {
       return;
     }
     setState(() => _submitting = true);
@@ -53,6 +58,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final title = ref.watch(appBrandingProvider).title;
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -66,13 +72,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Keystone',
+                    title,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 32),
                   TextFormField(
                     controller: _identifier,
+                    autofocus: true,
+                    textInputAction: TextInputAction.next,
+                    onFieldSubmitted: (_) => _passwordFocus.requestFocus(),
                     decoration: const InputDecoration(
                       labelText: 'Username',
                       hintText: 'username@tenantid',
@@ -81,10 +90,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         v == null || v.isEmpty ? 'Username is required' : null,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  PasswordField(
                     controller: _password,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Password'),
+                    focusNode: _passwordFocus,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _submit(),
+                    labelText: 'Password',
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Password is required' : null,
                   ),

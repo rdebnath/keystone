@@ -20,11 +20,27 @@ Map<String, dynamic> _$LoginRequestToJson(_LoginRequest instance) =>
 
 _ChangePasswordRequest _$ChangePasswordRequestFromJson(
   Map<String, dynamic> json,
-) => _ChangePasswordRequest(password: json['password'] as String);
+) => _ChangePasswordRequest(
+  password: json['password'] as String,
+  currentPassword: json['currentPassword'] as String?,
+);
 
 Map<String, dynamic> _$ChangePasswordRequestToJson(
   _ChangePasswordRequest instance,
-) => <String, dynamic>{'password': instance.password};
+) => <String, dynamic>{
+  'password': instance.password,
+  'currentPassword': ?instance.currentPassword,
+};
+
+_ResetPasswordRequest _$ResetPasswordRequestFromJson(
+  Map<String, dynamic> json,
+) => _ResetPasswordRequest(
+  temporaryPassword: json['temporaryPassword'] as String,
+);
+
+Map<String, dynamic> _$ResetPasswordRequestToJson(
+  _ResetPasswordRequest instance,
+) => <String, dynamic>{'temporaryPassword': instance.temporaryPassword};
 
 _CreateTenantRequest _$CreateTenantRequestFromJson(Map<String, dynamic> json) =>
     _CreateTenantRequest(
@@ -35,6 +51,27 @@ _CreateTenantRequest _$CreateTenantRequestFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$CreateTenantRequestToJson(
   _CreateTenantRequest instance,
 ) => <String, dynamic>{'name': instance.name, 'slug': instance.slug};
+
+_UpdateTenantRequest _$UpdateTenantRequestFromJson(Map<String, dynamic> json) =>
+    _UpdateTenantRequest(
+      name: json['name'] as String,
+      slug: json['slug'] as String,
+    );
+
+Map<String, dynamic> _$UpdateTenantRequestToJson(
+  _UpdateTenantRequest instance,
+) => <String, dynamic>{'name': instance.name, 'slug': instance.slug};
+
+_UpdateUserRequest _$UpdateUserRequestFromJson(Map<String, dynamic> json) =>
+    _UpdateUserRequest(
+      username: json['username'] as String,
+      roles:
+          (json['roles'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+          const <String>[],
+    );
+
+Map<String, dynamic> _$UpdateUserRequestToJson(_UpdateUserRequest instance) =>
+    <String, dynamic>{'username': instance.username, 'roles': instance.roles};
 
 _CreateRoleRequest _$CreateRoleRequestFromJson(Map<String, dynamic> json) =>
     _CreateRoleRequest(

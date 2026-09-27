@@ -22,13 +22,18 @@ import com.chetana.keystone.security.SecurityModule;
 import com.chetana.keystone.web.CorsConfig;
 import com.chetana.keystone.web.WebModule;
 import io.javalin.Javalin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Inventory application entry point. Hosts the platform admin console library alongside the
- * inventory service: both schemas are migrated, the first platform user is bootstrapped, and the
- * shared HTTP server serves both the inventory API and the platform admin API.
+ * inventory service: both schemas are migrated (unless {@code startup.migrateOnStart=false}), the
+ * first platform user is bootstrapped (unless the platform bootstrap is disabled), and the shared
+ * HTTP server serves both the inventory API and the platform admin API.
  */
 public final class Main {
+
+    private static final Logger log = LoggerFactory.getLogger(Main.class);
 
     private Main() {
     }
@@ -65,8 +70,15 @@ public final class Main {
                 new AdminModule(),
                 new InventoryModule());
 
-        injector.getInstance(MigrationRunner.class).migrate();
-        injector.getInstance(AdminMigrationRunner.class).migrate();
+        if (config.startup().migrateOnStart()) {
+            injector.getInstance(MigrationRunner.class).migrate();
+            injector.getInstance(AdminMigrationRunner.class).migrate();
+        } else {
+            log.info("Automatic Liquibase migration is disabled (startup.migrateOnStart=false /"
+                            + " MIGRATE_ON_START=false); schemas '{}' and '{}' are expected to be migrated"
+                            + " out of band (SchemaTool migrate) before serving traffic.",
+                    inventoryDb.schema(), platformDb.schema());
+        }
         injector.getInstance(BootstrapRunner.class).bootstrap();
 
         injector.getInstance(Javalin.class).start(config.server().port());

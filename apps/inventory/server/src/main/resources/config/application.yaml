@@ -22,6 +22,11 @@ database:
 platform:
   schema: "platform"     # schema in the shared DB where the hosted platform admin console lives
 
+startup:
+  migrateOnStart: true   # run Liquibase at startup for both schemas (this app's + the platform's);
+                         # override with MIGRATE_ON_START=false to apply migrations out of band
+                         # (SchemaTool migrate) before serving traffic
+
 server:
   port: 8080             # HTTP port (no environment override)
   contextPath: /inventory  # URL prefix the app serves under (e.g. localhost:8080/inventory)

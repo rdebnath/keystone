@@ -55,4 +55,28 @@ class GoTrueWireRecordsTest {
 
         assertThat(page.users()).isEmpty();
     }
+
+    @Test
+    void should_read_the_gotrue_error_code_and_tolerate_unknown_fields() throws Exception {
+        GoTrueError error = objectMapper.readValue("""
+                {"code":400,"error_code":"invalid_credentials","msg":"Invalid login credentials",\
+                "extra":"a field the provider adds later"}
+                """, GoTrueError.class);
+
+        assertThat(error.describe()).isEqualTo("invalid_credentials");
+    }
+
+    @Test
+    void should_describe_a_failure_without_error_code_by_its_numeric_code() throws Exception {
+        GoTrueError error = objectMapper.readValue("{\"code\":429}", GoTrueError.class);
+
+        assertThat(error.describe()).isEqualTo("429");
+    }
+
+    @Test
+    void should_describe_an_empty_failure_body_as_unknown() throws Exception {
+        GoTrueError error = objectMapper.readValue("{}", GoTrueError.class);
+
+        assertThat(error.describe()).isEqualTo("unknown");
+    }
 }

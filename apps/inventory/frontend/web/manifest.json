@@ -1,11 +1,11 @@
 {
-    "name": "inventory",
-    "short_name": "inventory",
+    "name": "Keystone - Inventory Management",
+    "short_name": "Keystone Inventory",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Inventory Management.",
+    "description": "Keystone - Inventory Management.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

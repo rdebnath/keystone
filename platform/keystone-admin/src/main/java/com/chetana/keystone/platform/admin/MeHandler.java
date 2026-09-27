@@ -34,7 +34,7 @@ public final class MeHandler implements RouteConfigurer {
         routes.post("/api/v1/me/password", ctx -> {
             Principal principal = guard.principal(ctx);
             var request = ctx.bodyAsClass(ChangePasswordRequest.class);
-            meService.changePassword(principal.subject(), request.password());
+            meService.changePassword(principal.subject(), request);
             ctx.status(204);
         });
 

@@ -101,7 +101,32 @@ lives where seeding already happens.
 3. A caller whose role grants `platform:tenant:read-write` gets `200` on `GET` and `201`/`200`/`204`
    on mutations of tenants.
 4. The platform admin (wildcard `*`) is unaffected.
-5. `POST /api/v1/permissions` rejects a code that does not end in `read-only`/`read-write` with `400`.
+5. `POST /api/v1/permissions` rejects a code that does not end in `read-only`/`read-write` with `422`
+   (a `ValidationException`, which `ProblemDetailMapper` maps to `VALIDATION -> 422`).
 6. Roles created through the UI can be given either level per resource; the UI shows the level.
 7. The catalog contains exactly the 14 level codes plus `*`, and no code exists to clean up or migrate
    any other code (fresh development — there is nothing to prune).
+
+## Correction (2026-09-27)
+
+Acceptance criterion 5 originally read `400`. That was wrong, and it was corrected while delivering
+`admin-console-navigation`:
+
+- A rejected *value* is a `ValidationException`, and the platform's single RFC 9457 mapper answers it
+  with **422** — `ProblemDetailMapper.statusOf` has `case VALIDATION -> 422` (its only 422), alongside
+  `NOT_FOUND -> 404`, `CONFLICT -> 409`, `ACCESS_DENIED -> 403`, `INTERNAL -> 500`. No application code
+  returns 400 itself; the first draft of the new integration test asserted 400 and failed with
+  "expected: 400 but was: 422" against a real server.
+- The same mistake had been copied into that feature's own documents and was fixed there too (see
+  `docs/delivery/admin-console-navigation/07-testing.md` and `08-delivery.md`).
+
+**Why it happened:** `docs/CODING_GUIDELINES_BACKEND.md` claimed validation returns `400` in three
+places (§8 "Validation", §9 "Validation failures", §13 "Validate on the way in") while listing `422` as
+a valid failure status in §8 — the guidelines contradicted both themselves and the shipped mapper.
+
+**Resolved (2026-09-27, on review):** the guidelines were aligned with the shipped code rather than the
+code with the guidelines — a rejected value is **`422`**, and `400` is reserved for a request the
+framework could not parse (malformed JSON, missing body). Updated: §8 (both bullets), §9 (validation
+status + an explicit `ProblemDetailMapper` status-mapping list), §13, the §14 review checklist, and
+`docs/CODING_GUIDELINES_FRONTEND.md` §9 (which now distinguishes `422` from `400` when mapping statuses
+to typed failures). No code changed: `ProblemDetailMapper` already did this.

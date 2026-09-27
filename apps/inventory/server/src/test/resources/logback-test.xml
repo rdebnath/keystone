@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Test-only logging configuration for the inventory service — deliberately separate from the
+  service's own logback.xml.
+
+  Logback loads logback-test.xml ahead of logback.xml, so `mvn test` gets a short, readable format
+  and quiet third-party loggers while the packaged configuration keeps its Cloud Run settings
+  (stdout, LOG_LEVEL, jOOQ's LoggerListener pinned). This file lives under src/test/resources and
+  is never part of the deployable jar.
+-->
+<configuration>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.out</target>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- The application's and the platform's own lines are the interesting ones in a test run. -->
+    <logger name="com.chetana.keystone" level="INFO"/>
+
+    <!-- Liquibase, Jetty, HikariCP, jOOQ, Testcontainers and Docker chatter is noise here. -->
+    <root level="WARN">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+</configuration>

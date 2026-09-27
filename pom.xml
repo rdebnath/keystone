@@ -42,6 +42,11 @@
         <logback.version>1.6.3</logback.version>
         <jakarta-validation.version>3.1.1</jakarta-validation.version>
         <hibernate-validator.version>9.1.3.Final</hibernate-validator.version>
+        <!-- jOOQ's org.jooq.conf.* classes are JAXB-annotated, and jOOQ declares the JAXB API as an
+             optional dependency (unavailable since JDK 9), so code compiling against those classes
+             needs it on the compile classpath. Pinned to the version jOOQ itself manages
+             (`jaxb.version` in jooq-parent). -->
+        <jakarta-xml-bind.version>4.0.2</jakarta-xml-bind.version>
         <jackson.version>2.22.2</jackson.version>
         <slf4j.version>2.0.19</slf4j.version>
         <testcontainers.version>1.21.4</testcontainers.version>
@@ -121,6 +126,11 @@
                 <groupId>jakarta.validation</groupId>
                 <artifactId>jakarta.validation-api</artifactId>
                 <version>${jakarta-validation.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.xml.bind</groupId>
+                <artifactId>jakarta.xml.bind-api</artifactId>
+                <version>${jakarta-xml-bind.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.hibernate.validator</groupId>

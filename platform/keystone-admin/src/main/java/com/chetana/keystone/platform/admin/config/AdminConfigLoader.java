@@ -22,6 +22,9 @@ import java.util.Map;
  *
  * <p>Only the Supabase service-role key and the bootstrap admin password are secrets read from
  * environment variables (Cloud Run → Secret Manager); all non-secret values resolve from yaml.
+ * The one non-secret exception is the operational startup switch {@code bootstrap.enabled}, which
+ * an environment variable ({@code BOOTSTRAP_ON_START}) may override so the same image can be
+ * deployed with or without the first-user bootstrap.
  *
  * <p>The platform database connection is not resolved here — it is inherited from the hosting
  * application (same database, different schema), which passes a {@code DatabaseConfig} directly
@@ -67,9 +70,39 @@ public final class AdminConfigLoader {
 
     private static AdminConfig.Bootstrap bootstrap(Map<String, String> env, JsonNode overlay, JsonNode base) {
         return new AdminConfig.Bootstrap(
+                flag(env, overlay, base, "BOOTSTRAP_ON_START", true, "bootstrap", "enabled"),
                 fileString(overlay, base, "admin", "bootstrap", "adminUsername"),
                 fileString(overlay, base, "admin@keystone.com", "bootstrap", "adminEmail"),
                 secret(env, overlay, base, "BOOTSTRAP_ADMIN_PASSWORD", "changeit", "bootstrap", "adminPassword"));
+    }
+
+    /**
+     * Operational on/off switches: the environment variable wins, then yaml, then the code default —
+     * so a deployment can flip a startup behavior (e.g. the first-user bootstrap) without editing the
+     * environment file. Only values meant to be flipped per deployment belong here.
+     */
+    private static boolean flag(Map<String, String> env, JsonNode overlay, JsonNode base,
+                                String envKey, boolean fallback, String... path) {
+        String fromEnv = env.get(envKey);
+        if (fromEnv != null && !fromEnv.isBlank()) {
+            return parseFlag(envKey, fromEnv);
+        }
+        JsonNode node = pathNode(overlay, path);
+        if (node == null || node.isNull()) {
+            node = pathNode(base, path);
+        }
+        return node == null || node.isNull() ? fallback : node.asBoolean(fallback);
+    }
+
+    private static boolean parseFlag(String envKey, String value) {
+        String normalized = value.trim();
+        if ("true".equalsIgnoreCase(normalized)) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(normalized)) {
+            return false;
+        }
+        throw new IllegalArgumentException(envKey + " must be true or false: " + value);
     }
 
     /** Secret values: environment variable wins, then yaml, then fallback. */
@@ -101,6 +134,11 @@ public final class AdminConfigLoader {
     }
 
     private static String pathValue(JsonNode root, String... path) {
+        JsonNode node = pathNode(root, path);
+        return node == null || node.isNull() ? null : node.asText();
+    }
+
+    private static JsonNode pathNode(JsonNode root, String... path) {
         JsonNode node = root;
         for (String key : path) {
             if (node == null) {
@@ -108,7 +146,7 @@ public final class AdminConfigLoader {
             }
             node = node.get(key);
         }
-        return node == null || node.isNull() ? null : node.asText();
+        return node;
     }
 
     private static JsonNode readRequired(String path) {

@@ -99,6 +99,31 @@ class ConfigLoaderTest {
     }
 
     @Test
+    void should_migrate_on_start_by_default() {
+        AppConfig config = ConfigLoader.load(Map.of("DB_PASSWORD", "dev-secret"));
+
+        assertThat(config.startup().migrateOnStart()).isTrue();
+    }
+
+    @Test
+    void should_disable_automatic_migration_from_the_environment() {
+        AppConfig config = ConfigLoader.load(Map.of(
+                "DB_PASSWORD", "dev-secret",
+                "MIGRATE_ON_START", "false"));
+
+        assertThat(config.startup().migrateOnStart()).isFalse();
+    }
+
+    @Test
+    void should_reject_a_startup_switch_that_is_not_true_or_false() {
+        assertThatThrownBy(() -> ConfigLoader.load(Map.of(
+                "DB_PASSWORD", "dev-secret",
+                "MIGRATE_ON_START", "maybe")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("MIGRATE_ON_START");
+    }
+
+    @Test
     void should_fail_fast_when_required_config_is_missing() {
         // No environment commits a password; without DB_PASSWORD the config must be rejected.
         assertThatThrownBy(() -> ConfigLoader.load(Map.of("APP_ENV", "demo")))

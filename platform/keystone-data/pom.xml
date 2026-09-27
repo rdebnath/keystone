@@ -55,6 +55,15 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- jOOQ's org.jooq.conf.* classes (Settings, MappedSchema, RenderMapping) are JAXB-annotated,
+             and jOOQ ships the JAXB API as an optional dependency it no longer bundles on JDK 9+. It is
+             needed only so javac can read those annotations — nothing here marshals XML. -->
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- test -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -84,6 +93,15 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Logging backend for this module's tests only (src/test/resources/logback-test.xml). A
+             library never ships a logging backend either: the service that hosts it supplies one at
+             runtime and owns the logging configuration. -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

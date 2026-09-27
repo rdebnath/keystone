@@ -15,6 +15,7 @@ public record AppConfig(
         String environment,
         Database database,
         Platform platform,
+        Startup startup,
         Server server,
         Cors cors,
         Realtime realtime,
@@ -24,6 +25,7 @@ public record AppConfig(
         Objects.requireNonNull(environment, "environment");
         Objects.requireNonNull(database, "database");
         Objects.requireNonNull(platform, "platform");
+        Objects.requireNonNull(startup, "startup");
         Objects.requireNonNull(server, "server");
         Objects.requireNonNull(cors, "cors");
         Objects.requireNonNull(realtime, "realtime");
@@ -82,6 +84,15 @@ public record AppConfig(
         public Platform {
             Objects.requireNonNull(schema, "schema");
         }
+    }
+
+    /**
+     * Startup behavior the deployment controls. {@code migrateOnStart=false} (yaml
+     * {@code startup.migrateOnStart}, or {@code MIGRATE_ON_START=false} in the environment) skips the
+     * automatic Liquibase run for this app's schema and the platform schema at startup; migrations are
+     * then applied out of band with {@code SchemaTool migrate} before the revision is rolled out.
+     */
+    public record Startup(boolean migrateOnStart) {
     }
 
     public record Server(int port, String contextPath) {

@@ -26,14 +26,101 @@ void main() {
     });
   });
 
+  group('Me permissions', () {
+    Me meWith(List<String> permissions) =>
+        Me.fromJson({'sub': 's', 'permissions': permissions});
+
+    test('should_let_the_wildcard_allow_everything', () {
+      final me = meWith([Permission.wildcard]);
+
+      expect(me.allows('platform:tenant:read-only'), isTrue);
+      expect(me.allowsResource('platform:user'), isTrue);
+      expect(me.canWrite('platform:role'), isTrue);
+    });
+
+    test('should_treat_read_write_as_a_read_grant', () {
+      final me = meWith(['platform:tenant:read-write']);
+
+      expect(me.allowsResource('platform:tenant'), isTrue);
+      expect(me.canWrite('platform:tenant'), isTrue);
+    });
+
+    test('should_not_treat_read_only_as_a_write_grant', () {
+      final me = meWith(['platform:tenant:read-only']);
+
+      expect(me.allowsResource('platform:tenant'), isTrue);
+      expect(me.canWrite('platform:tenant'), isFalse);
+    });
+
+    test('should_not_let_one_resource_grant_another', () {
+      final me = meWith(['platform:tenant:read-write']);
+
+      expect(me.allowsResource('platform:user'), isFalse);
+      expect(me.allowsResource('tenant:user'), isFalse);
+    });
+
+    test('should_default_permissions_and_username_when_absent', () {
+      final me = Me.fromJson({'sub': 's'});
+
+      expect(me.username, '');
+      expect(me.permissions, isEmpty);
+      expect(me.allowsResource('platform:tenant'), isFalse);
+    });
+  });
+
   group('Tenant', () {
-    test('should parse slug', () {
+    test('should_parse_slug', () {
       final tenant = Tenant.fromJson({
         'id': 'i',
         'name': 'Acme',
         'slug': 'acme',
       });
       expect(tenant.slug, 'acme');
+    });
+
+    test('should_default_to_a_customer_tenant', () {
+      final tenant = Tenant.fromJson({
+        'id': 'i',
+        'name': 'Acme',
+        'slug': 'acme',
+      });
+
+      expect(tenant.platform, isFalse);
+      expect(tenant.isPlatform, isFalse);
+      expect(tenant.userPlane, 'acme');
+    });
+
+    test('should_flag_the_platform_tenant', () {
+      final tenant = Tenant.fromJson({
+        'id': '00000000-0000-0000-0000-000000000000',
+        'name': 'Keystone',
+        'slug': 'keystone',
+        'platform': true,
+        'createdAt': null,
+        'updatedAt': null,
+      });
+
+      expect(tenant.isPlatform, isTrue);
+      expect(tenant.userPlane, 'Platform');
+      expect(tenant.createdAt, '');
+    });
+  });
+
+  group('Role', () {
+    test('should_flag_the_platform_scope', () {
+      final platform = Role.fromJson({
+        'id': 'i',
+        'code': 'platform-admin',
+        'scope': 'PLATFORM',
+      });
+      final tenant = Role.fromJson({
+        'id': 'i',
+        'code': 'tenant-admin',
+        'scope': 'TENANT',
+      });
+
+      expect(platform.isPlatformScope, isTrue);
+      expect(tenant.isPlatformScope, isFalse);
     });
   });
 
@@ -104,6 +191,33 @@ void main() {
       expect(session.accessToken, 'access');
       expect(session.refreshToken, 'refresh');
       expect(session.expiresIn, 3600);
+    });
+  });
+
+  group('Password request models', () {
+    test(
+      'should_omit_the_current_password_when_the_forced_flow_sends_none',
+      () {
+        expect(ChangePasswordRequest(password: 'new-secret').toJson(), {
+          'password': 'new-secret',
+        });
+      },
+    );
+
+    test('should_carry_the_current_password_for_a_voluntary_change', () {
+      expect(
+        ChangePasswordRequest(
+          password: 'new-secret',
+          currentPassword: 'old-secret',
+        ).toJson(),
+        {'password': 'new-secret', 'currentPassword': 'old-secret'},
+      );
+    });
+
+    test('should_serialize_the_reset_password_request', () {
+      expect(ResetPasswordRequest(temporaryPassword: 'temp-secret').toJson(), {
+        'temporaryPassword': 'temp-secret',
+      });
     });
   });
 }
