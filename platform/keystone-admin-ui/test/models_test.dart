@@ -59,12 +59,110 @@ void main() {
       expect(me.allowsResource('tenant:user'), isFalse);
     });
 
+    test('should_let_the_platform_plane_grant_anything', () {
+      // `CallerScope.requireGrantable` exempts the platform plane, so the picker must not disable anything
+      // for it — including the wildcard row in the global catalogue.
+      final me = Me(sub: 's', permissions: const ['platform:role:read-write']);
+
+      expect(me.canGrant('tenant:user:read-write'), isTrue);
+      expect(me.canGrant(Permission.wildcard), isTrue);
+    });
+
+    test('should_grant_a_code_the_tenant_caller_holds', () {
+      final me = Me(
+        sub: 's',
+        tenantId: 't1',
+        permissions: const ['tenant:role:read-write'],
+      );
+
+      expect(me.canGrant('tenant:role:read-write'), isTrue);
+      expect(me.canGrant('tenant:user:read-write'), isFalse);
+    });
+
+    test('should_treat_a_write_grant_as_covering_the_read_only_code', () {
+      // The guard's own implication: `CallerScope.holds` accepts the read-only sibling of a write grant.
+      final me = Me(
+        sub: 's',
+        tenantId: 't1',
+        permissions: const ['tenant:user:read-write'],
+      );
+
+      expect(me.canGrant('tenant:user:read-only'), isTrue);
+      // …and never the other way round.
+      final readOnly = Me(
+        sub: 's',
+        tenantId: 't1',
+        permissions: const ['tenant:user:read-only'],
+      );
+      expect(readOnly.canGrant('tenant:user:read-write'), isFalse);
+    });
+
+    test('should_never_grant_the_wildcard_nor_a_code_with_no_level', () {
+      // A tenant caller may not hand out `*`, and a code without an access level is not a held code either.
+      final me = Me(
+        sub: 's',
+        tenantId: 't1',
+        permissions: const ['*'],
+      );
+
+      expect(me.canGrant(Permission.wildcard), isFalse);
+      expect(me.canGrant('tenant:user:read-write'), isFalse);
+      expect(me.canGrant('tenant:user'), isFalse);
+    });
+
     test('should_default_permissions_and_username_when_absent', () {
       final me = Me.fromJson({'sub': 's'});
 
       expect(me.username, '');
       expect(me.permissions, isEmpty);
       expect(me.allowsResource('platform:tenant'), isFalse);
+    });
+  });
+
+  group('Seeded administrative roles', () {
+    test('should_flag_the_immutable_global_and_tenant_admin_roles', () {
+      // Mirrors `PermissionCatalog.isSeededAdminRole`, so the console offers no edit the server would refuse.
+      expect(
+        isSeededAdminRole(
+          const Role(id: 'r', code: 'platform-admin', scope: 'PLATFORM'),
+        ),
+        isTrue,
+      );
+      expect(
+        isSeededAdminRole(
+          const Role(
+            id: 'r',
+            code: 'admin',
+            scope: 'TENANT',
+            tenantId: 'acme',
+          ),
+        ),
+        isTrue,
+      );
+    });
+
+    test('should_not_flag_a_role_of_another_code_owner_or_plane', () {
+      expect(
+        isSeededAdminRole(
+          const Role(
+            id: 'r',
+            code: 'platform-admin',
+            scope: 'TENANT',
+            tenantId: 'acme',
+          ),
+        ),
+        isFalse,
+      );
+      expect(
+        isSeededAdminRole(
+          const Role(id: 'r', code: 'admin', scope: 'PLATFORM'),
+        ),
+        isFalse,
+      );
+      expect(
+        isSeededAdminRole(const Role(id: 'r', code: 'auditor', scope: 'TENANT')),
+        isFalse,
+      );
     });
   });
 
@@ -217,6 +315,99 @@ void main() {
     test('should_serialize_the_reset_password_request', () {
       expect(ResetPasswordRequest(temporaryPassword: 'temp-secret').toJson(), {
         'temporaryPassword': 'temp-secret',
+      });
+    });
+  });
+
+  group('Role and permission ownership', () {
+    test('should_treat_an_absent_owner_as_the_global_catalog', () {
+      final role = Role.fromJson({
+        'id': 'r1',
+        'code': 'platform-admin',
+        'scope': 'PLATFORM',
+      });
+      expect(role.isGlobal, isTrue);
+      expect(role.tenantId, isNull);
+      expect(role.ownerLabel, 'Global');
+
+      final permission = Permission.fromJson({
+        'id': 'p1',
+        'code': 'tenant:user:read-write',
+        'scope': 'TENANT',
+      });
+      expect(permission.isGlobal, isTrue);
+    });
+  });
+
+  group('Country and phone number', () {
+    test('should_parse_a_tenants_country_and_default_it_to_none', () {
+      expect(
+        Tenant.fromJson({
+          'id': 'i',
+          'name': 'Acme',
+          'slug': 'acme',
+          'country': 'IN',
+        }).country,
+        'IN',
+      );
+      expect(
+        Tenant.fromJson({'id': 'i', 'name': 'Acme', 'slug': 'acme'}).country,
+        isNull,
+      );
+    });
+
+    test('should_parse_a_users_phone_number_and_default_it_to_none', () {
+      final user = User.fromJson({
+        'id': 'u1',
+        'sub': 'sub-1',
+        'username': 'alice',
+        'email': 'alice@acme.com',
+        'phoneNumber': '+919876543210',
+      });
+      expect(user.phoneNumber, '+919876543210');
+
+      final none = User.fromJson({
+        'id': 'u2',
+        'sub': 'sub-2',
+        'username': 'bob',
+        'email': 'bob@acme.com',
+      });
+      expect(none.phoneNumber, isNull);
+    });
+
+    test('should_carry_the_country_in_a_create_and_an_update_request', () {
+      expect(
+        CreateTenantRequest(name: 'Acme', slug: 'acme', country: 'IN').toJson(),
+        {'name': 'Acme', 'slug': 'acme', 'country': 'IN'},
+      );
+      // An omitted country clears the recorded one: the update takes the same full body as create.
+      expect(UpdateTenantRequest(name: 'Acme', slug: 'acme').toJson(), {
+        'name': 'Acme',
+        'slug': 'acme',
+        'country': null,
+      });
+    });
+
+    test('should_carry_the_phone_number_in_a_create_and_an_update_request', () {
+      expect(
+        CreateUserRequest(
+          username: 'bob',
+          temporaryPassword: 'temporary',
+          phoneNumber: '+91 98765 43210',
+        ).toJson(),
+        {
+          'username': 'bob',
+          'tenantId': null,
+          'email': null,
+          'phoneNumber': '+91 98765 43210',
+          'temporaryPassword': 'temporary',
+          'roles': <String>[],
+        },
+      );
+      expect(UpdateUserRequest(username: 'bob').toJson(), {
+        'username': 'bob',
+        'phoneNumber': null,
+        'roles': <String>[],
       });
     });
   });

@@ -103,8 +103,18 @@ deployment that runs the server with `MIGRATE_ON_START=false` / `BOOTSTRAP_ON_ST
 idempotent, so they are safe to run on every rollout.
 
 Overridable via environment: `MAIN_CLASS`, `API_BASE_URL`, `DEVICE` (`chrome` default; use
-`web-server` for a plain URL), `WEB_PORT` (default `3000`), `SCHEMA_TOOL_CLASS`,
-`BOOTSTRAP_TOOL_CLASS`.
+`web-server` for a plain URL), `MODE` (`debug` default; use `profile`/`release` for a session you
+leave open), `WEB_PORT` (default `3000`), `SCHEMA_TOOL_CLASS`, `BOOTSTRAP_TOOL_CLASS`.
+
+`start-web.sh` builds the web client in **debug** mode by default — the hot-reload loop, which is the
+right trade-off while editing. A debug web build is served through the Dart development compiler with
+the VM service attached, and a browser stops reclaiming its heap while DevTools is open, so a debug
+session grows the longer it sits idle. For a run you leave open, set `MODE=release` (or `MODE=profile`)
+to serve the compiled bundle instead — at the cost of hot reload:
+
+```bash
+MODE=release scripts/start-web.sh inventory
+```
 
 ## Schema management (CLI)
 

@@ -46,37 +46,53 @@ _CreateTenantRequest _$CreateTenantRequestFromJson(Map<String, dynamic> json) =>
     _CreateTenantRequest(
       name: json['name'] as String,
       slug: json['slug'] as String,
+      country: json['country'] as String?,
     );
 
 Map<String, dynamic> _$CreateTenantRequestToJson(
   _CreateTenantRequest instance,
-) => <String, dynamic>{'name': instance.name, 'slug': instance.slug};
+) => <String, dynamic>{
+  'name': instance.name,
+  'slug': instance.slug,
+  'country': instance.country,
+};
 
 _UpdateTenantRequest _$UpdateTenantRequestFromJson(Map<String, dynamic> json) =>
     _UpdateTenantRequest(
       name: json['name'] as String,
       slug: json['slug'] as String,
+      country: json['country'] as String?,
     );
 
 Map<String, dynamic> _$UpdateTenantRequestToJson(
   _UpdateTenantRequest instance,
-) => <String, dynamic>{'name': instance.name, 'slug': instance.slug};
+) => <String, dynamic>{
+  'name': instance.name,
+  'slug': instance.slug,
+  'country': instance.country,
+};
 
 _UpdateUserRequest _$UpdateUserRequestFromJson(Map<String, dynamic> json) =>
     _UpdateUserRequest(
       username: json['username'] as String,
+      phoneNumber: json['phoneNumber'] as String?,
       roles:
           (json['roles'] as List<dynamic>?)?.map((e) => e as String).toList() ??
           const <String>[],
     );
 
 Map<String, dynamic> _$UpdateUserRequestToJson(_UpdateUserRequest instance) =>
-    <String, dynamic>{'username': instance.username, 'roles': instance.roles};
+    <String, dynamic>{
+      'username': instance.username,
+      'phoneNumber': instance.phoneNumber,
+      'roles': instance.roles,
+    };
 
 _CreateRoleRequest _$CreateRoleRequestFromJson(Map<String, dynamic> json) =>
     _CreateRoleRequest(
       code: json['code'] as String,
       scope: json['scope'] as String,
+      tenantId: json['tenantId'] as String?,
       permissions:
           (json['permissions'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -88,6 +104,25 @@ Map<String, dynamic> _$CreateRoleRequestToJson(_CreateRoleRequest instance) =>
     <String, dynamic>{
       'code': instance.code,
       'scope': instance.scope,
+      'tenantId': instance.tenantId,
+      'permissions': instance.permissions,
+    };
+
+_UpdateRoleRequest _$UpdateRoleRequestFromJson(Map<String, dynamic> json) =>
+    _UpdateRoleRequest(
+      code: json['code'] as String,
+      scope: json['scope'] as String,
+      permissions:
+          (json['permissions'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const <String>[],
+    );
+
+Map<String, dynamic> _$UpdateRoleRequestToJson(_UpdateRoleRequest instance) =>
+    <String, dynamic>{
+      'code': instance.code,
+      'scope': instance.scope,
       'permissions': instance.permissions,
     };
 
@@ -96,17 +131,23 @@ _CreatePermissionRequest _$CreatePermissionRequestFromJson(
 ) => _CreatePermissionRequest(
   code: json['code'] as String,
   scope: json['scope'] as String,
+  tenantId: json['tenantId'] as String?,
 );
 
 Map<String, dynamic> _$CreatePermissionRequestToJson(
   _CreatePermissionRequest instance,
-) => <String, dynamic>{'code': instance.code, 'scope': instance.scope};
+) => <String, dynamic>{
+  'code': instance.code,
+  'scope': instance.scope,
+  'tenantId': instance.tenantId,
+};
 
 _CreateUserRequest _$CreateUserRequestFromJson(Map<String, dynamic> json) =>
     _CreateUserRequest(
       username: json['username'] as String,
       tenantId: json['tenantId'] as String?,
       email: json['email'] as String?,
+      phoneNumber: json['phoneNumber'] as String?,
       temporaryPassword: json['temporaryPassword'] as String,
       roles:
           (json['roles'] as List<dynamic>?)?.map((e) => e as String).toList() ??
@@ -118,6 +159,7 @@ Map<String, dynamic> _$CreateUserRequestToJson(_CreateUserRequest instance) =>
       'username': instance.username,
       'tenantId': instance.tenantId,
       'email': instance.email,
+      'phoneNumber': instance.phoneNumber,
       'temporaryPassword': instance.temporaryPassword,
       'roles': instance.roles,
     };

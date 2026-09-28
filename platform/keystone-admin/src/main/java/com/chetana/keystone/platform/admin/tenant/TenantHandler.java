@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.chetana.keystone.platform.admin.Ids;
 import com.chetana.keystone.platform.admin.auth.PermissionGuard;
+import com.chetana.keystone.web.QueryParams;
 import com.chetana.keystone.web.RouteConfigurer;
 import io.javalin.config.RoutesConfig;
 
@@ -30,7 +31,15 @@ public final class TenantHandler implements RouteConfigurer {
     public void configure(RoutesConfig routes) {
         routes.get("/api/v1/tenants", ctx -> {
             guard.requireRead(ctx, PLATFORM_TENANT);
-            ctx.json(service.list());
+            ctx.json(service.list(QueryParams.page(ctx), QueryParams.search(ctx)));
+        });
+
+        // The console's pickers (the tenant filter and the tenant/owner dropdowns) need *every* tenant, not
+        // a page of them — a dropdown fed by page 1 would silently offer only page 1. Same read check as the
+        // list above, and no conflict with a path-parameter route: there is no `GET /tenants/{id}`.
+        routes.get("/api/v1/tenants/options", ctx -> {
+            guard.requireRead(ctx, PLATFORM_TENANT);
+            ctx.json(service.options());
         });
 
         routes.post("/api/v1/tenants", ctx -> {

@@ -304,7 +304,7 @@ as List<String>,
 /// @nodoc
 mixin _$Tenant {
 
- String get id; String get name; String get slug; bool get platform; String get createdAt; String get updatedAt;
+ String get id; String get name; String get slug; String? get country; bool get platform; String get createdAt; String get updatedAt;
 /// Create a copy of Tenant
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -318,20 +318,20 @@ $TenantCopyWith<Tenant> get copyWith => _$TenantCopyWithImpl<Tenant>(this as Ten
 @override
 bool operator ==(Object other) {
   final _this = this as Tenant;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Tenant&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.slug, _this.slug) || other.slug == _this.slug)&&(identical(other.platform, _this.platform) || other.platform == _this.platform)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Tenant&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.slug, _this.slug) || other.slug == _this.slug)&&(identical(other.country, _this.country) || other.country == _this.country)&&(identical(other.platform, _this.platform) || other.platform == _this.platform)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as Tenant;
-  return Object.hash(runtimeType,_this.id,_this.name,_this.slug,_this.platform,_this.createdAt,_this.updatedAt);
+  return Object.hash(runtimeType,_this.id,_this.name,_this.slug,_this.country,_this.platform,_this.createdAt,_this.updatedAt);
 }
 
 @override
 String toString() {
   final _this = this as Tenant;
-  return 'Tenant(id: ${_this.id}, name: ${_this.name}, slug: ${_this.slug}, platform: ${_this.platform}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
+  return 'Tenant(id: ${_this.id}, name: ${_this.name}, slug: ${_this.slug}, country: ${_this.country}, platform: ${_this.platform}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -342,7 +342,7 @@ abstract mixin class $TenantCopyWith<$Res>  {
   factory $TenantCopyWith(Tenant value, $Res Function(Tenant) _then) = _$TenantCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String slug, bool platform, String createdAt, String updatedAt
+ String id, String name, String slug, String? country, bool platform, String createdAt, String updatedAt
 });
 
 
@@ -359,12 +359,13 @@ class _$TenantCopyWithImpl<$Res>
 
 /// Create a copy of Tenant
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? slug = null,Object? platform = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? slug = null,Object? country = freezed,Object? platform = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(Tenant(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
-as String,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
+as String,country: freezed == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
+as String?,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
 as bool,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as String,
@@ -452,10 +453,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String slug,  bool platform,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String slug,  String? country,  bool platform,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Tenant() when $default != null:
-return $default(_that.id,_that.name,_that.slug,_that.platform,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.name,_that.slug,_that.country,_that.platform,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -473,10 +474,10 @@ return $default(_that.id,_that.name,_that.slug,_that.platform,_that.createdAt,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String slug,  bool platform,  String createdAt,  String updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String slug,  String? country,  bool platform,  String createdAt,  String updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Tenant():
-return $default(_that.id,_that.name,_that.slug,_that.platform,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.name,_that.slug,_that.country,_that.platform,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -493,10 +494,10 @@ return $default(_that.id,_that.name,_that.slug,_that.platform,_that.createdAt,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String slug,  bool platform,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String slug,  String? country,  bool platform,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Tenant() when $default != null:
-return $default(_that.id,_that.name,_that.slug,_that.platform,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.name,_that.slug,_that.country,_that.platform,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -508,12 +509,13 @@ return $default(_that.id,_that.name,_that.slug,_that.platform,_that.createdAt,_t
 @JsonSerializable()
 
 class _Tenant extends Tenant {
-  const _Tenant({required this.id, required this.name, this.slug = '', this.platform = false, this.createdAt = '', this.updatedAt = ''}): super._();
+  const _Tenant({required this.id, required this.name, this.slug = '', this.country, this.platform = false, this.createdAt = '', this.updatedAt = ''}): super._();
   factory _Tenant.fromJson(Map<String, dynamic> json) => _$TenantFromJson(json);
 
 @override final  String id;
 @override final  String name;
 @override@JsonKey() final  String slug;
+@override final  String? country;
 @override@JsonKey() final  bool platform;
 @override@JsonKey() final  String createdAt;
 @override@JsonKey() final  String updatedAt;
@@ -531,18 +533,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Tenant&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Tenant&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.country, country) || other.country == country)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,name,slug,platform,createdAt,updatedAt);
+    return Object.hash(runtimeType,id,name,slug,country,platform,createdAt,updatedAt);
 }
 
 @override
 String toString() {
-    return 'Tenant(id: $id, name: $name, slug: $slug, platform: $platform, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Tenant(id: $id, name: $name, slug: $slug, country: $country, platform: $platform, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -553,7 +555,7 @@ abstract mixin class _$TenantCopyWith<$Res> implements $TenantCopyWith<$Res> {
   factory _$TenantCopyWith(_Tenant value, $Res Function(_Tenant) _then) = __$TenantCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String slug, bool platform, String createdAt, String updatedAt
+ String id, String name, String slug, String? country, bool platform, String createdAt, String updatedAt
 });
 
 
@@ -570,12 +572,13 @@ class __$TenantCopyWithImpl<$Res>
 
 /// Create a copy of Tenant
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? slug = null,Object? platform = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? slug = null,Object? country = freezed,Object? platform = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_Tenant(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
-as String,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
+as String,country: freezed == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
+as String?,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
 as bool,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as String,
@@ -589,7 +592,7 @@ as String,
 /// @nodoc
 mixin _$Role {
 
- String get id; String get code; String get scope; List<String> get permissions; String get createdAt; String get updatedAt;
+ String get id; String get code; String get scope; String? get tenantId; List<String> get permissions; String get createdAt; String get updatedAt;
 /// Create a copy of Role
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -603,20 +606,20 @@ $RoleCopyWith<Role> get copyWith => _$RoleCopyWithImpl<Role>(this as Role, _$ide
 @override
 bool operator ==(Object other) {
   final _this = this as Role;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Role&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.scope, _this.scope) || other.scope == _this.scope)&&const DeepCollectionEquality().equals(other.permissions, _this.permissions)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Role&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.scope, _this.scope) || other.scope == _this.scope)&&(identical(other.tenantId, _this.tenantId) || other.tenantId == _this.tenantId)&&const DeepCollectionEquality().equals(other.permissions, _this.permissions)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as Role;
-  return Object.hash(runtimeType,_this.id,_this.code,_this.scope,const DeepCollectionEquality().hash(_this.permissions),_this.createdAt,_this.updatedAt);
+  return Object.hash(runtimeType,_this.id,_this.code,_this.scope,_this.tenantId,const DeepCollectionEquality().hash(_this.permissions),_this.createdAt,_this.updatedAt);
 }
 
 @override
 String toString() {
   final _this = this as Role;
-  return 'Role(id: ${_this.id}, code: ${_this.code}, scope: ${_this.scope}, permissions: ${_this.permissions}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
+  return 'Role(id: ${_this.id}, code: ${_this.code}, scope: ${_this.scope}, tenantId: ${_this.tenantId}, permissions: ${_this.permissions}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -627,7 +630,7 @@ abstract mixin class $RoleCopyWith<$Res>  {
   factory $RoleCopyWith(Role value, $Res Function(Role) _then) = _$RoleCopyWithImpl;
 @useResult
 $Res call({
- String id, String code, String scope, List<String> permissions, String createdAt, String updatedAt
+ String id, String code, String scope, String? tenantId, List<String> permissions, String createdAt, String updatedAt
 });
 
 
@@ -644,12 +647,13 @@ class _$RoleCopyWithImpl<$Res>
 
 /// Create a copy of Role
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? code = null,Object? scope = null,Object? permissions = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? code = null,Object? scope = null,Object? tenantId = freezed,Object? permissions = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(Role(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
 as String,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
-as String,permissions: null == permissions ? _self.permissions : permissions // ignore: cast_nullable_to_non_nullable
+as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
+as String?,permissions: null == permissions ? _self.permissions : permissions // ignore: cast_nullable_to_non_nullable
 as List<String>,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as String,
@@ -737,10 +741,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String code,  String scope,  List<String> permissions,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String code,  String scope,  String? tenantId,  List<String> permissions,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Role() when $default != null:
-return $default(_that.id,_that.code,_that.scope,_that.permissions,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.code,_that.scope,_that.tenantId,_that.permissions,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -758,10 +762,10 @@ return $default(_that.id,_that.code,_that.scope,_that.permissions,_that.createdA
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String code,  String scope,  List<String> permissions,  String createdAt,  String updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String code,  String scope,  String? tenantId,  List<String> permissions,  String createdAt,  String updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Role():
-return $default(_that.id,_that.code,_that.scope,_that.permissions,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.code,_that.scope,_that.tenantId,_that.permissions,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -778,10 +782,10 @@ return $default(_that.id,_that.code,_that.scope,_that.permissions,_that.createdA
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String code,  String scope,  List<String> permissions,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String code,  String scope,  String? tenantId,  List<String> permissions,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Role() when $default != null:
-return $default(_that.id,_that.code,_that.scope,_that.permissions,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.code,_that.scope,_that.tenantId,_that.permissions,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -793,12 +797,13 @@ return $default(_that.id,_that.code,_that.scope,_that.permissions,_that.createdA
 @JsonSerializable()
 
 class _Role extends Role {
-  const _Role({required this.id, required this.code, this.scope = '',  List<String> permissions = const <String>[], this.createdAt = '', this.updatedAt = ''}): _permissions = permissions,super._();
+  const _Role({required this.id, required this.code, this.scope = '', this.tenantId,  List<String> permissions = const <String>[], this.createdAt = '', this.updatedAt = ''}): _permissions = permissions,super._();
   factory _Role.fromJson(Map<String, dynamic> json) => _$RoleFromJson(json);
 
 @override final  String id;
 @override final  String code;
 @override@JsonKey() final  String scope;
+@override final  String? tenantId;
  final  List<String> _permissions;
 @override@JsonKey() List<String> get permissions {
   if (_permissions is EqualUnmodifiableListView) return _permissions;
@@ -822,18 +827,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Role&&(identical(other.id, id) || other.id == id)&&(identical(other.code, code) || other.code == code)&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other.permissions, _permissions)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Role&&(identical(other.id, id) || other.id == id)&&(identical(other.code, code) || other.code == code)&&(identical(other.scope, scope) || other.scope == scope)&&(identical(other.tenantId, tenantId) || other.tenantId == tenantId)&&const DeepCollectionEquality().equals(other.permissions, _permissions)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,code,scope,const DeepCollectionEquality().hash(_permissions),createdAt,updatedAt);
+    return Object.hash(runtimeType,id,code,scope,tenantId,const DeepCollectionEquality().hash(_permissions),createdAt,updatedAt);
 }
 
 @override
 String toString() {
-    return 'Role(id: $id, code: $code, scope: $scope, permissions: $permissions, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Role(id: $id, code: $code, scope: $scope, tenantId: $tenantId, permissions: $permissions, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -844,7 +849,7 @@ abstract mixin class _$RoleCopyWith<$Res> implements $RoleCopyWith<$Res> {
   factory _$RoleCopyWith(_Role value, $Res Function(_Role) _then) = __$RoleCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String code, String scope, List<String> permissions, String createdAt, String updatedAt
+ String id, String code, String scope, String? tenantId, List<String> permissions, String createdAt, String updatedAt
 });
 
 
@@ -861,12 +866,13 @@ class __$RoleCopyWithImpl<$Res>
 
 /// Create a copy of Role
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? code = null,Object? scope = null,Object? permissions = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? code = null,Object? scope = null,Object? tenantId = freezed,Object? permissions = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_Role(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
 as String,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
-as String,permissions: null == permissions ? _self._permissions : permissions // ignore: cast_nullable_to_non_nullable
+as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
+as String?,permissions: null == permissions ? _self._permissions : permissions // ignore: cast_nullable_to_non_nullable
 as List<String>,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as String,
@@ -880,7 +886,7 @@ as String,
 /// @nodoc
 mixin _$Permission {
 
- String get id; String get code; String get scope; String get createdAt; String get updatedAt;
+ String get id; String get code; String get scope; String? get tenantId; String get createdAt; String get updatedAt;
 /// Create a copy of Permission
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -894,20 +900,20 @@ $PermissionCopyWith<Permission> get copyWith => _$PermissionCopyWithImpl<Permiss
 @override
 bool operator ==(Object other) {
   final _this = this as Permission;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Permission&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.scope, _this.scope) || other.scope == _this.scope)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Permission&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.scope, _this.scope) || other.scope == _this.scope)&&(identical(other.tenantId, _this.tenantId) || other.tenantId == _this.tenantId)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as Permission;
-  return Object.hash(runtimeType,_this.id,_this.code,_this.scope,_this.createdAt,_this.updatedAt);
+  return Object.hash(runtimeType,_this.id,_this.code,_this.scope,_this.tenantId,_this.createdAt,_this.updatedAt);
 }
 
 @override
 String toString() {
   final _this = this as Permission;
-  return 'Permission(id: ${_this.id}, code: ${_this.code}, scope: ${_this.scope}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
+  return 'Permission(id: ${_this.id}, code: ${_this.code}, scope: ${_this.scope}, tenantId: ${_this.tenantId}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -918,7 +924,7 @@ abstract mixin class $PermissionCopyWith<$Res>  {
   factory $PermissionCopyWith(Permission value, $Res Function(Permission) _then) = _$PermissionCopyWithImpl;
 @useResult
 $Res call({
- String id, String code, String scope, String createdAt, String updatedAt
+ String id, String code, String scope, String? tenantId, String createdAt, String updatedAt
 });
 
 
@@ -935,12 +941,13 @@ class _$PermissionCopyWithImpl<$Res>
 
 /// Create a copy of Permission
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? code = null,Object? scope = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? code = null,Object? scope = null,Object? tenantId = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(Permission(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
 as String,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
-as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
+as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -1027,10 +1034,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String code,  String scope,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String code,  String scope,  String? tenantId,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Permission() when $default != null:
-return $default(_that.id,_that.code,_that.scope,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.code,_that.scope,_that.tenantId,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -1048,10 +1055,10 @@ return $default(_that.id,_that.code,_that.scope,_that.createdAt,_that.updatedAt)
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String code,  String scope,  String createdAt,  String updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String code,  String scope,  String? tenantId,  String createdAt,  String updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Permission():
-return $default(_that.id,_that.code,_that.scope,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.code,_that.scope,_that.tenantId,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1068,10 +1075,10 @@ return $default(_that.id,_that.code,_that.scope,_that.createdAt,_that.updatedAt)
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String code,  String scope,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String code,  String scope,  String? tenantId,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Permission() when $default != null:
-return $default(_that.id,_that.code,_that.scope,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.code,_that.scope,_that.tenantId,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -1083,12 +1090,13 @@ return $default(_that.id,_that.code,_that.scope,_that.createdAt,_that.updatedAt)
 @JsonSerializable()
 
 class _Permission extends Permission {
-  const _Permission({required this.id, required this.code, this.scope = '', this.createdAt = '', this.updatedAt = ''}): super._();
+  const _Permission({required this.id, required this.code, this.scope = '', this.tenantId, this.createdAt = '', this.updatedAt = ''}): super._();
   factory _Permission.fromJson(Map<String, dynamic> json) => _$PermissionFromJson(json);
 
 @override final  String id;
 @override final  String code;
 @override@JsonKey() final  String scope;
+@override final  String? tenantId;
 @override@JsonKey() final  String createdAt;
 @override@JsonKey() final  String updatedAt;
 
@@ -1105,18 +1113,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Permission&&(identical(other.id, id) || other.id == id)&&(identical(other.code, code) || other.code == code)&&(identical(other.scope, scope) || other.scope == scope)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Permission&&(identical(other.id, id) || other.id == id)&&(identical(other.code, code) || other.code == code)&&(identical(other.scope, scope) || other.scope == scope)&&(identical(other.tenantId, tenantId) || other.tenantId == tenantId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,code,scope,createdAt,updatedAt);
+    return Object.hash(runtimeType,id,code,scope,tenantId,createdAt,updatedAt);
 }
 
 @override
 String toString() {
-    return 'Permission(id: $id, code: $code, scope: $scope, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Permission(id: $id, code: $code, scope: $scope, tenantId: $tenantId, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -1127,7 +1135,7 @@ abstract mixin class _$PermissionCopyWith<$Res> implements $PermissionCopyWith<$
   factory _$PermissionCopyWith(_Permission value, $Res Function(_Permission) _then) = __$PermissionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String code, String scope, String createdAt, String updatedAt
+ String id, String code, String scope, String? tenantId, String createdAt, String updatedAt
 });
 
 
@@ -1144,12 +1152,13 @@ class __$PermissionCopyWithImpl<$Res>
 
 /// Create a copy of Permission
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? code = null,Object? scope = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? code = null,Object? scope = null,Object? tenantId = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_Permission(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
 as String,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
-as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
+as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -1162,7 +1171,7 @@ as String,
 /// @nodoc
 mixin _$User {
 
- String get id; String get sub; String get username; String get email; String? get tenantId; bool get mustChangePassword; List<String> get roles; String get createdAt; String get updatedAt;
+ String get id; String get sub; String get username; String get email; String? get phoneNumber; String? get tenantId; bool get mustChangePassword; List<String> get roles; String get createdAt; String get updatedAt;
 /// Create a copy of User
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1176,20 +1185,20 @@ $UserCopyWith<User> get copyWith => _$UserCopyWithImpl<User>(this as User, _$ide
 @override
 bool operator ==(Object other) {
   final _this = this as User;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is User&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.sub, _this.sub) || other.sub == _this.sub)&&(identical(other.username, _this.username) || other.username == _this.username)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.tenantId, _this.tenantId) || other.tenantId == _this.tenantId)&&(identical(other.mustChangePassword, _this.mustChangePassword) || other.mustChangePassword == _this.mustChangePassword)&&const DeepCollectionEquality().equals(other.roles, _this.roles)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is User&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.sub, _this.sub) || other.sub == _this.sub)&&(identical(other.username, _this.username) || other.username == _this.username)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.phoneNumber, _this.phoneNumber) || other.phoneNumber == _this.phoneNumber)&&(identical(other.tenantId, _this.tenantId) || other.tenantId == _this.tenantId)&&(identical(other.mustChangePassword, _this.mustChangePassword) || other.mustChangePassword == _this.mustChangePassword)&&const DeepCollectionEquality().equals(other.roles, _this.roles)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as User;
-  return Object.hash(runtimeType,_this.id,_this.sub,_this.username,_this.email,_this.tenantId,_this.mustChangePassword,const DeepCollectionEquality().hash(_this.roles),_this.createdAt,_this.updatedAt);
+  return Object.hash(runtimeType,_this.id,_this.sub,_this.username,_this.email,_this.phoneNumber,_this.tenantId,_this.mustChangePassword,const DeepCollectionEquality().hash(_this.roles),_this.createdAt,_this.updatedAt);
 }
 
 @override
 String toString() {
   final _this = this as User;
-  return 'User(id: ${_this.id}, sub: ${_this.sub}, username: ${_this.username}, email: ${_this.email}, tenantId: ${_this.tenantId}, mustChangePassword: ${_this.mustChangePassword}, roles: ${_this.roles}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
+  return 'User(id: ${_this.id}, sub: ${_this.sub}, username: ${_this.username}, email: ${_this.email}, phoneNumber: ${_this.phoneNumber}, tenantId: ${_this.tenantId}, mustChangePassword: ${_this.mustChangePassword}, roles: ${_this.roles}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -1200,7 +1209,7 @@ abstract mixin class $UserCopyWith<$Res>  {
   factory $UserCopyWith(User value, $Res Function(User) _then) = _$UserCopyWithImpl;
 @useResult
 $Res call({
- String id, String sub, String username, String email, String? tenantId, bool mustChangePassword, List<String> roles, String createdAt, String updatedAt
+ String id, String sub, String username, String email, String? phoneNumber, String? tenantId, bool mustChangePassword, List<String> roles, String createdAt, String updatedAt
 });
 
 
@@ -1217,13 +1226,14 @@ class _$UserCopyWithImpl<$Res>
 
 /// Create a copy of User
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sub = null,Object? username = null,Object? email = null,Object? tenantId = freezed,Object? mustChangePassword = null,Object? roles = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sub = null,Object? username = null,Object? email = null,Object? phoneNumber = freezed,Object? tenantId = freezed,Object? mustChangePassword = null,Object? roles = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(User(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sub: null == sub ? _self.sub : sub // ignore: cast_nullable_to_non_nullable
 as String,username: null == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
-as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
+as String,phoneNumber: freezed == phoneNumber ? _self.phoneNumber : phoneNumber // ignore: cast_nullable_to_non_nullable
+as String?,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
 as String?,mustChangePassword: null == mustChangePassword ? _self.mustChangePassword : mustChangePassword // ignore: cast_nullable_to_non_nullable
 as bool,roles: null == roles ? _self.roles : roles // ignore: cast_nullable_to_non_nullable
 as List<String>,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
@@ -1313,10 +1323,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String sub,  String username,  String email,  String? tenantId,  bool mustChangePassword,  List<String> roles,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String sub,  String username,  String email,  String? phoneNumber,  String? tenantId,  bool mustChangePassword,  List<String> roles,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _User() when $default != null:
-return $default(_that.id,_that.sub,_that.username,_that.email,_that.tenantId,_that.mustChangePassword,_that.roles,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.sub,_that.username,_that.email,_that.phoneNumber,_that.tenantId,_that.mustChangePassword,_that.roles,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -1334,10 +1344,10 @@ return $default(_that.id,_that.sub,_that.username,_that.email,_that.tenantId,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String sub,  String username,  String email,  String? tenantId,  bool mustChangePassword,  List<String> roles,  String createdAt,  String updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String sub,  String username,  String email,  String? phoneNumber,  String? tenantId,  bool mustChangePassword,  List<String> roles,  String createdAt,  String updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _User():
-return $default(_that.id,_that.sub,_that.username,_that.email,_that.tenantId,_that.mustChangePassword,_that.roles,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.sub,_that.username,_that.email,_that.phoneNumber,_that.tenantId,_that.mustChangePassword,_that.roles,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1354,10 +1364,10 @@ return $default(_that.id,_that.sub,_that.username,_that.email,_that.tenantId,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String sub,  String username,  String email,  String? tenantId,  bool mustChangePassword,  List<String> roles,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String sub,  String username,  String email,  String? phoneNumber,  String? tenantId,  bool mustChangePassword,  List<String> roles,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _User() when $default != null:
-return $default(_that.id,_that.sub,_that.username,_that.email,_that.tenantId,_that.mustChangePassword,_that.roles,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.sub,_that.username,_that.email,_that.phoneNumber,_that.tenantId,_that.mustChangePassword,_that.roles,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -1369,13 +1379,14 @@ return $default(_that.id,_that.sub,_that.username,_that.email,_that.tenantId,_th
 @JsonSerializable()
 
 class _User implements User {
-  const _User({required this.id, required this.sub, this.username = '', required this.email, this.tenantId, this.mustChangePassword = false,  List<String> roles = const <String>[], this.createdAt = '', this.updatedAt = ''}): _roles = roles;
+  const _User({required this.id, required this.sub, this.username = '', required this.email, this.phoneNumber, this.tenantId, this.mustChangePassword = false,  List<String> roles = const <String>[], this.createdAt = '', this.updatedAt = ''}): _roles = roles;
   factory _User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
 
 @override final  String id;
 @override final  String sub;
 @override@JsonKey() final  String username;
 @override final  String email;
+@override final  String? phoneNumber;
 @override final  String? tenantId;
 @override@JsonKey() final  bool mustChangePassword;
  final  List<String> _roles;
@@ -1401,18 +1412,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _User&&(identical(other.id, id) || other.id == id)&&(identical(other.sub, sub) || other.sub == sub)&&(identical(other.username, username) || other.username == username)&&(identical(other.email, email) || other.email == email)&&(identical(other.tenantId, tenantId) || other.tenantId == tenantId)&&(identical(other.mustChangePassword, mustChangePassword) || other.mustChangePassword == mustChangePassword)&&const DeepCollectionEquality().equals(other.roles, _roles)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _User&&(identical(other.id, id) || other.id == id)&&(identical(other.sub, sub) || other.sub == sub)&&(identical(other.username, username) || other.username == username)&&(identical(other.email, email) || other.email == email)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&(identical(other.tenantId, tenantId) || other.tenantId == tenantId)&&(identical(other.mustChangePassword, mustChangePassword) || other.mustChangePassword == mustChangePassword)&&const DeepCollectionEquality().equals(other.roles, _roles)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sub,username,email,tenantId,mustChangePassword,const DeepCollectionEquality().hash(_roles),createdAt,updatedAt);
+    return Object.hash(runtimeType,id,sub,username,email,phoneNumber,tenantId,mustChangePassword,const DeepCollectionEquality().hash(_roles),createdAt,updatedAt);
 }
 
 @override
 String toString() {
-    return 'User(id: $id, sub: $sub, username: $username, email: $email, tenantId: $tenantId, mustChangePassword: $mustChangePassword, roles: $roles, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'User(id: $id, sub: $sub, username: $username, email: $email, phoneNumber: $phoneNumber, tenantId: $tenantId, mustChangePassword: $mustChangePassword, roles: $roles, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -1423,7 +1434,7 @@ abstract mixin class _$UserCopyWith<$Res> implements $UserCopyWith<$Res> {
   factory _$UserCopyWith(_User value, $Res Function(_User) _then) = __$UserCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sub, String username, String email, String? tenantId, bool mustChangePassword, List<String> roles, String createdAt, String updatedAt
+ String id, String sub, String username, String email, String? phoneNumber, String? tenantId, bool mustChangePassword, List<String> roles, String createdAt, String updatedAt
 });
 
 
@@ -1440,13 +1451,14 @@ class __$UserCopyWithImpl<$Res>
 
 /// Create a copy of User
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sub = null,Object? username = null,Object? email = null,Object? tenantId = freezed,Object? mustChangePassword = null,Object? roles = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sub = null,Object? username = null,Object? email = null,Object? phoneNumber = freezed,Object? tenantId = freezed,Object? mustChangePassword = null,Object? roles = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_User(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sub: null == sub ? _self.sub : sub // ignore: cast_nullable_to_non_nullable
 as String,username: null == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
-as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
+as String,phoneNumber: freezed == phoneNumber ? _self.phoneNumber : phoneNumber // ignore: cast_nullable_to_non_nullable
+as String?,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
 as String?,mustChangePassword: null == mustChangePassword ? _self.mustChangePassword : mustChangePassword // ignore: cast_nullable_to_non_nullable
 as bool,roles: null == roles ? _self._roles : roles // ignore: cast_nullable_to_non_nullable
 as List<String>,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable

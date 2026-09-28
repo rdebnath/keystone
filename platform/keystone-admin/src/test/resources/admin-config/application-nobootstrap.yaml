@@ -1,0 +1,8 @@
+supabase:
+  url: https://nobootstrap.supabase.co
+security:
+  issuer: https://nobootstrap.supabase.co/auth/v1
+  audience: authenticated
+  jwksUrl: https://nobootstrap.supabase.co/auth/v1/.well-known/jwks.json
+# No `bootstrap:` block on purpose: with the bootstrap enabled and no identity in yaml, startup must
+# fail fast rather than fall back to a built-in default.

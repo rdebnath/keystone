@@ -68,12 +68,21 @@ public final class AdminConfigLoader {
                 fileString(overlay, base, "", "security", "jwksUrl"));
     }
 
+    /**
+     * Bootstrap policy and the first admin's identity.
+     *
+     * <p>The username and email are **non-secret, per-deployment values**: they resolve from yaml only
+     * ({@code admin-config/application-{env}.yaml}, with {@code application.yaml} holding a blank
+     * placeholder), and a missing value fails fast in {@link AdminConfig} instead of falling back to a
+     * built-in default — so each deployment decides who its first admin is. The password is the one
+     * secret here ({@code BOOTSTRAP_ADMIN_PASSWORD}, then yaml, then the yaml-provided default).
+     */
     private static AdminConfig.Bootstrap bootstrap(Map<String, String> env, JsonNode overlay, JsonNode base) {
         return new AdminConfig.Bootstrap(
                 flag(env, overlay, base, "BOOTSTRAP_ON_START", true, "bootstrap", "enabled"),
-                fileString(overlay, base, "admin", "bootstrap", "adminUsername"),
-                fileString(overlay, base, "admin@keystone.com", "bootstrap", "adminEmail"),
-                secret(env, overlay, base, "BOOTSTRAP_ADMIN_PASSWORD", "changeit", "bootstrap", "adminPassword"));
+                fileString(overlay, base, "", "bootstrap", "adminUsername"),
+                fileString(overlay, base, "", "bootstrap", "adminEmail"),
+                secret(env, overlay, base, "BOOTSTRAP_ADMIN_PASSWORD", "", "bootstrap", "adminPassword"));
     }
 
     /**

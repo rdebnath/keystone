@@ -61,6 +61,26 @@ class AdminConfigLoaderTest {
     }
 
     @Test
+    void should_take_the_bootstrap_identity_from_the_environment_yaml() {
+        AdminConfig config = AdminConfigLoader.load(Map.of(
+                "APP_ENV", "override",
+                "SUPABASE_SERVICE_ROLE_KEY", "service-role"));
+
+        // Nothing is built into the code: the per-environment file decides who the first admin is.
+        assertThat(config.bootstrap().adminUsername()).isEqualTo("root");
+        assertThat(config.bootstrap().adminEmail()).isEqualTo("root@acme.test");
+    }
+
+    @Test
+    void should_fail_fast_when_the_environment_yaml_omits_the_bootstrap_identity() {
+        assertThatThrownBy(() -> AdminConfigLoader.load(Map.of(
+                "APP_ENV", "nobootstrap",
+                "SUPABASE_SERVICE_ROLE_KEY", "service-role")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("bootstrap.adminUsername");
+    }
+
+    @Test
     void should_fail_fast_when_non_secret_supabase_url_is_missing() {
         // No application-prod.yaml: the base yaml leaves supabase.url blank -> rejected.
         assertThatThrownBy(() -> AdminConfigLoader.load(Map.of("APP_ENV", "prod")))

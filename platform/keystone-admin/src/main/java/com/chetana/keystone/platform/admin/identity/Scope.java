@@ -23,4 +23,12 @@ public enum Scope {
             throw new ValidationException("scope must be PLATFORM or TENANT");
         }
     }
+
+    /**
+     * The {@code scope} filter of a list request: an absent value means every scope the caller can see.
+     * Parsed like {@code Ids.optionalUuid} — absent is not an error, a present-but-invalid value is.
+     */
+    public static Scope optional(String value) {
+        return value == null || value.isBlank() ? null : from(value);
+    }
 }

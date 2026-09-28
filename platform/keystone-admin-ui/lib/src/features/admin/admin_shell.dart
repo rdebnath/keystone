@@ -19,40 +19,83 @@ const double _inlineMinWidth = 800;
 /// Animation of the pane's show/hide transition.
 const Duration _paneDuration = Duration(milliseconds: 160);
 
-/// A section of the platform console: its route, its menu label and the permission that makes it
-/// visible. The backend enforces the same permission — the menu only mirrors it.
-enum AdminSection {
-  tenants(
-    path: '/tenants',
-    label: 'Tenants',
-    icon: Icons.apartment_outlined,
-    resource: PlatformResource.tenant,
-  ),
-  users(
-    path: '/users',
-    label: 'Users',
-    icon: Icons.people_outline,
-    resource: PlatformResource.user,
-  ),
-  roles(
-    path: '/roles',
-    label: 'Roles',
-    icon: Icons.workspace_premium_outlined,
-    resource: PlatformResource.role,
-  ),
-  permissions(
-    path: '/permissions',
-    label: 'Permissions',
-    icon: Icons.key_outlined,
-    resource: PlatformResource.permission,
-  );
-
+/// A section of a console: its route, its menu label and the permission that makes it visible. The
+/// backend enforces the same permission — the menu only mirrors it.
+///
+/// The **platform** console and the **tenant** console list different sections over the *same screens*:
+/// the tenant set has no Tenants section (a tenant does not manage tenants) and points at the
+/// `tenant:*` resources and the `/tenant/…` routes.
+class AdminSection {
   const AdminSection({
     required this.path,
     required this.label,
     required this.icon,
     required this.resource,
   });
+
+  static const AdminSection tenants = AdminSection(
+    path: '/tenants',
+    label: 'Tenants',
+    icon: Icons.apartment_outlined,
+    resource: PlatformResource.tenant,
+  );
+
+  static const AdminSection users = AdminSection(
+    path: '/users',
+    label: 'Users',
+    icon: Icons.people_outline,
+    resource: PlatformResource.user,
+  );
+
+  static const AdminSection roles = AdminSection(
+    path: '/roles',
+    label: 'Roles',
+    icon: Icons.workspace_premium_outlined,
+    resource: PlatformResource.role,
+  );
+
+  static const AdminSection permissions = AdminSection(
+    path: '/permissions',
+    label: 'Permissions',
+    icon: Icons.key_outlined,
+    resource: PlatformResource.permission,
+  );
+
+  static const AdminSection tenantUsers = AdminSection(
+    path: '/tenant/users',
+    label: 'Users',
+    icon: Icons.people_outline,
+    resource: TenantResource.user,
+  );
+
+  static const AdminSection tenantRoles = AdminSection(
+    path: '/tenant/roles',
+    label: 'Roles',
+    icon: Icons.workspace_premium_outlined,
+    resource: TenantResource.role,
+  );
+
+  static const AdminSection tenantPermissions = AdminSection(
+    path: '/tenant/permissions',
+    label: 'Permissions',
+    icon: Icons.key_outlined,
+    resource: TenantResource.permission,
+  );
+
+  /// The platform console's sections, in menu order.
+  static const List<AdminSection> values = <AdminSection>[
+    tenants,
+    users,
+    roles,
+    permissions,
+  ];
+
+  /// The tenant console's sections — the same screens on the tenant plane, and no Tenants section.
+  static const List<AdminSection> tenantValues = <AdminSection>[
+    tenantUsers,
+    tenantRoles,
+    tenantPermissions,
+  ];
 
   /// Route path of the section.
   final String path;
@@ -65,11 +108,27 @@ enum AdminSection {
   /// The resource whose read permission reveals the section.
   final String resource;
 
-  /// The section [location] belongs to (a prefix match, so `/tenants/<id>` selects Tenants), or null
-  /// when the location is not a console section.
-  static AdminSection? forLocation(String location) {
-    for (final section in values) {
+  /// The section [location] belongs to within [sections] (a prefix match, so `/tenants/<id>` selects
+  /// Tenants), or null when the location is not a section of that console.
+  static AdminSection? forLocation(
+    String location, {
+    List<AdminSection> sections = values,
+  }) {
+    for (final section in sections) {
       if (location == section.path || location.startsWith('${section.path}/')) {
+        return section;
+      }
+    }
+    return null;
+  }
+
+  /// The first section of [sections] that [me] may read, or null when it may read none of them.
+  static AdminSection? firstReadable(
+    Me me, {
+    List<AdminSection> sections = values,
+  }) {
+    for (final section in sections) {
+      if (me.allowsResource(section.resource)) {
         return section;
       }
     }
@@ -77,8 +136,9 @@ enum AdminSection {
   }
 }
 
-/// The console's route paths, shared with the hosting application's router so the menu and the routes
-/// cannot drift apart.
+/// The console route paths, shared with the hosting application's router so the menu and the routes
+/// cannot drift apart. The `tenant…` constants are the tenant self-service plane: the same screens,
+/// scoped by the backend to the caller's own tenant.
 abstract final class AdminRoutes {
   static const String tenants = '/tenants';
   static const String tenantUsersPattern = '/tenants/:tenantId';
@@ -86,28 +146,44 @@ abstract final class AdminRoutes {
   static const String roles = '/roles';
   static const String permissions = '/permissions';
 
+  static const String tenantUsers = '/tenant/users';
+  static const String tenantRoles = '/tenant/roles';
+  static const String tenantPermissions = '/tenant/permissions';
+
   /// The concrete path of one tenant's users.
   static String forTenant(String tenantId) => '$tenants/$tenantId';
 
-  /// The first section [me] may read — the landing route after login. When the caller may read nothing
-  /// the shell renders a single explanatory panel instead of an empty menu.
+  /// The first platform section [me] may read — the landing route after login. When the caller may read
+  /// nothing the shell renders a single explanatory panel instead of an empty menu.
   static String firstAllowed(Me me) {
-    for (final section in AdminSection.values) {
-      if (me.allowsResource(section.resource)) {
-        return section.path;
-      }
-    }
-    return tenants;
+    return AdminSection.firstReadable(me)?.path ?? tenants;
+  }
+
+  /// The first tenant section [me] may read, or null when the caller has no tenant console at all —
+  /// in which case it belongs in the application's own UI.
+  static String? firstAllowedTenant(Me me) {
+    return AdminSection.firstReadable(
+      me,
+      sections: AdminSection.tenantValues,
+    )?.path;
   }
 }
 
-/// The platform console shell: a hideable left pane listing the sections [Me] permits, an AppBar naming
-/// the current section, and the section body built by the router.
+/// A console shell: a hideable left pane listing the sections [Me] permits, an AppBar naming the
+/// current section, and the section body built by the router.
 ///
 /// The pane is an inline column on wide layouts (toggled between [_paneWidth] and zero width by the
 /// AppBar button) and an overlay `Drawer` on narrow ones, so the same menu works on web and phones.
+///
+/// The same shell serves both consoles: the hosting router passes the platform sections for the platform
+/// console and [AdminSection.tenantValues] for a tenant's own, so the menu and the routes cannot drift.
 class AdminShell extends ConsumerStatefulWidget {
-  const AdminShell({super.key, required this.location, required this.child});
+  const AdminShell({
+    super.key,
+    required this.location,
+    required this.child,
+    this.sections = AdminSection.values,
+  });
 
   /// Identifies the inline pane, whose width the show/hide toggle animates between `0` and the pane
   /// width — so its size is what "the pane is hidden" means.
@@ -118,6 +194,9 @@ class AdminShell extends ConsumerStatefulWidget {
 
   /// The section body, built by the hosting router.
   final Widget child;
+
+  /// The sections this console offers, in menu order — the platform console's by default.
+  final List<AdminSection> sections;
 
   @override
   ConsumerState<AdminShell> createState() => _AdminShellState();
@@ -135,10 +214,13 @@ class _AdminShellState extends ConsumerState<AdminShell> {
 
     final branding = ref.watch(appBrandingProvider);
     final narrow = MediaQuery.sizeOf(context).width < _inlineMinWidth;
-    final sections = AdminSection.values
+    final sections = widget.sections
         .where((section) => me.allowsResource(section.resource))
         .toList(growable: false);
-    final current = AdminSection.forLocation(widget.location);
+    final current = AdminSection.forLocation(
+      widget.location,
+      sections: widget.sections,
+    );
 
     if (sections.isEmpty) {
       return Scaffold(
@@ -157,8 +239,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
         body: const MessagePanel(
           icon: Icons.lock_outline,
           message:
-              'You do not have access to any section of the platform console. '
-              'Ask a platform administrator to grant you a read permission.',
+              'You do not have access to any section of this console. '
+              'Ask an administrator to grant you a read permission.',
         ),
       );
     }
@@ -264,11 +346,14 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     await ref.read(authServiceProvider).signOut();
     ref.read(signedInProvider.notifier).state = false;
     ref.invalidate(meProvider);
-    // Drop every cached list so the next user does not see this one's data.
-    ref.invalidate(tenantsProvider);
-    ref.invalidate(rolesProvider);
-    ref.invalidate(permissionsProvider);
-    ref.invalidate(usersProvider);
+    // Drop every cached list so the next user does not see this one's data. Invalidating a family drops
+    // every query cached under it, which is exactly what signing out means.
+    ref.invalidate(tenantOptionsProvider);
+    ref.invalidate(tenantsPageProvider);
+    ref.invalidate(rolesPageProvider);
+    ref.invalidate(roleOptionsProvider);
+    ref.invalidate(permissionsPageProvider);
+    ref.invalidate(usersPageProvider);
   }
 }
 

@@ -44,17 +44,62 @@ abstract class Me with _$Me {
   /// wildcard.
   bool canWrite(String resource) =>
       allows('$resource:${PermissionAccess.readWrite.suffix}');
+
+  /// Whether the caller may **grant** [code] to a role — the client mirror of the backend's
+  /// `CallerScope.requireGrantable` (`docs/ARCHITECTURE.md` §9.5, *grant only what you hold*), so the
+  /// role editor's picker disables a row the server would refuse instead of offering it and failing on save.
+  ///
+  /// The platform plane is unrestricted (the backend exempts it); a tenant caller may never grant the
+  /// wildcard, and may grant a code only if it holds it — where "holds" follows the guard's implication, so
+  /// a `…:read-write` grant covers the `…:read-only` code of the same resource.
+  ///
+  /// UX, not security: the backend refuses what this predicts, and this is never the boundary.
+  bool canGrant(String code) {
+    if (isPlatformAdmin) {
+      return true;
+    }
+    return code != Permission.wildcard && _holds(code);
+  }
+
+  /// Whether the caller holds [code], exactly as the backend's `CallerScope.holds` decides it — including
+  /// that a wildcard in the set does **not** make a concrete code held (the guard only checks the code and
+  /// its read/write sibling), so a prediction here never outruns the server's.
+  bool _holds(String code) {
+    if (permissions.contains(code)) {
+      return true;
+    }
+    final level = PermissionAccess.fromCode(code);
+    if (level == null || level == PermissionAccess.readWrite) {
+      return false;
+    }
+    final separator = code.lastIndexOf(':');
+    return permissions.contains(
+      '${code.substring(0, separator)}:${PermissionAccess.readWrite.suffix}',
+    );
+  }
 }
 
 /// A tenant (`GET /api/v1/tenants`). `createdAt`/`updatedAt` stay the wire's ISO-8601 strings.
+/// `country` is the tenant's ISO 3166-1 alpha-2 code (`IN`, `DE`, uppercased by the backend), or null
+/// when none is recorded.
 @freezed
 abstract class Tenant with _$Tenant {
   const Tenant._();
+
+  /// The reserved id of the **platform plane**, mirrored from the backend's
+  /// `PlatformSchema.PLATFORM_TENANT_ID`: an all-zero UUID, which a real tenant (a random v4) cannot collide
+  /// with, and which is never persisted.
+  ///
+  /// `GET /api/v1/tenants` surfaces it as the synthetic [isPlatform] row, the owner filters use it for *"the
+  /// global catalog only"*, and a **global role** is queried with it because the catalog is all such a role
+  /// may hold (`RoleService.grantableTo`).
+  static const String platformId = '00000000-0000-0000-0000-000000000000';
 
   const factory Tenant({
     required String id,
     required String name,
     @Default('') String slug,
+    String? country,
     @Default(false) bool platform,
     @Default('') String createdAt,
     @Default('') String updatedAt,
@@ -71,6 +116,11 @@ abstract class Tenant with _$Tenant {
 }
 
 /// A role with its granted permission codes.
+///
+/// `tenantId` is the role's **owner**: `null` is the global, platform-defined catalog (usable by the
+/// platform plane and every tenant), any other value is the tenant that owns the row. `scope` is
+/// independent of the owner and says what the role is *about* (`PLATFORM` = cross-tenant, `TENANT` =
+/// within one customer).
 @freezed
 abstract class Role with _$Role {
   const Role._();
@@ -79,6 +129,7 @@ abstract class Role with _$Role {
     required String id,
     required String code,
     @Default('') String scope,
+    String? tenantId,
     @Default(<String>[]) List<String> permissions,
     @Default('') String createdAt,
     @Default('') String updatedAt,
@@ -89,6 +140,12 @@ abstract class Role with _$Role {
   /// Platform roles span tenants; tenant roles belong to one customer and may not be granted to a
   /// platform user (`Scope` on the backend).
   bool get isPlatformScope => scope == 'PLATFORM';
+
+  /// A global role: defined by the platform, usable by every tenant and the platform plane.
+  bool get isGlobal => tenantId == null;
+
+  /// The owner's label: a tenant-owned role, or the global catalog.
+  String get ownerLabel => isGlobal ? 'Global' : 'This tenant';
 }
 
 /// The two access levels a permission can carry — read/write (`…:read-write`: read, create, update
@@ -123,7 +180,7 @@ enum PermissionAccess {
   }
 }
 
-/// A permission in a scope (`platform` or `tenant`).
+/// A permission in a scope (`platform` or `tenant`), owned globally or by one tenant.
 @freezed
 abstract class Permission with _$Permission {
   const Permission._();
@@ -135,6 +192,7 @@ abstract class Permission with _$Permission {
     required String id,
     required String code,
     @Default('') String scope,
+    String? tenantId,
     @Default('') String createdAt,
     @Default('') String updatedAt,
   }) = _Permission;
@@ -147,9 +205,16 @@ abstract class Permission with _$Permission {
   PermissionAccess? get access => code == wildcard
       ? PermissionAccess.readWrite
       : PermissionAccess.fromCode(code);
+
+  /// A global permission: part of the platform-defined catalog, assignable by every tenant.
+  bool get isGlobal => tenantId == null;
+
+  /// The owner's label: a tenant-defined permission, or the global catalog.
+  String get ownerLabel => isGlobal ? 'Global' : 'This tenant';
 }
 
-/// A user; `tenantId` is null for a platform user.
+/// A user; `tenantId` is null for a platform user, and `phoneNumber` is null when none is recorded
+/// (the backend stores it in E.164 form).
 @freezed
 abstract class User with _$User {
   const factory User({
@@ -157,6 +222,7 @@ abstract class User with _$User {
     required String sub,
     @Default('') String username,
     required String email,
+    String? phoneNumber,
     String? tenantId,
     @Default(false) bool mustChangePassword,
     @Default(<String>[]) List<String> roles,

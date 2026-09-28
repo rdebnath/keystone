@@ -1,9 +1,11 @@
 package com.chetana.keystone.platform.admin;
 
 import com.chetana.keystone.platform.admin.identity.Access;
+import com.chetana.keystone.platform.admin.identity.Scope;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The platform-defined permission catalog, seeded idempotently at bootstrap. Every resource carries
@@ -15,6 +17,14 @@ public final class PermissionCatalog {
 
     public static final String WILDCARD = "*";
     public static final String PLATFORM_ADMIN_ROLE = "platform-admin";
+
+    /**
+     * The administrative role every tenant owns — code {@code admin}, seeded with the tenant and unique
+     * per owner (so every tenant can have one; {@code tenant_id} is what separates them). Mirrors
+     * {@link #PLATFORM_ADMIN_ROLE}, and like it is immutable: a tenant must never be able to delete the
+     * only role that grants its own administration back.
+     */
+    public static final String TENANT_ADMIN_ROLE = "admin";
 
     public static final String PLATFORM_TENANT = "platform:tenant";
     public static final String PLATFORM_ROLE = "platform:role";
@@ -62,6 +72,31 @@ public final class PermissionCatalog {
         return separator > 0
                 && separator < code.length() - 1
                 && Access.suffixes().contains(code.substring(separator + 1));
+    }
+
+    /**
+     * The codes a seeded tenant admin role holds: every global {@code TENANT}-scope resource at the
+     * <strong>read/write</strong> level (derived, so a future tenant-scope resource joins automatically).
+     * Read-only is deliberately absent — a read/write grant already satisfies every read check
+     * ({@link #acceptedCodes(String, Access)}), so granting both levels would be redundant.
+     */
+    public static List<String> tenantAdminGrants() {
+        String readWrite = ":" + Access.READ_WRITE.suffix();
+        return PERMISSIONS.stream()
+                .filter(permission -> Scope.TENANT.name().equals(permission.scope()))
+                .filter(permission -> permission.code().endsWith(readWrite))
+                .map(Permission::code)
+                .toList();
+    }
+
+    /**
+     * Whether {@code (code, owner)} names a <strong>seeded administrative role</strong>, which is
+     * immutable: the platform plane's {@code platform-admin} when the row is global, or a tenant's
+     * {@code admin} when the row is tenant-owned. Without this a single role-write holder could delete
+     * the only role that grants them back in.
+     */
+    public static boolean isSeededAdminRole(String code, UUID tenantId) {
+        return tenantId == null ? PLATFORM_ADMIN_ROLE.equals(code) : TENANT_ADMIN_ROLE.equals(code);
     }
 
     private static List<Permission> seeds() {

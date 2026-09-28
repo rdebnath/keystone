@@ -20,7 +20,12 @@ Supabase Realtime) on which applications are built (`apps/*`), each a holder wit
 3. **Frontend coding guidelines** — `docs/CODING_GUIDELINES_FRONTEND.md`
    Authoritative for all Flutter client code.
 
-4. **Feature delivery skill** — `.agents/skills/feature-delivery/SKILL.md`
+4. **UX guidelines** — `docs/UX_GUIDELINES.md`
+   Authoritative for what a screen must do for the user. §1 covers every list screen (server-side
+   search, filtering, sorting and paging) and names the shared widgets that enforce it; read it
+   together with the coding guidelines before building or changing a screen.
+
+5. **Feature delivery skill** — `.agents/skills/feature-delivery/SKILL.md`
    Use when implementing a feature or a significant bug. Produces a phased delivery plan
    written to `docs/delivery/<feature-or-ticket>/` for platform-level changes or to
    `apps/<app>/docs/delivery/<feature-or-ticket>/` for app-specific changes, and executes

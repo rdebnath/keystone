@@ -69,8 +69,9 @@ class PermissionGuardTest {
     }
 
     private static Javalin app(Set<String> permissions) {
-        // The resolver is never consulted: the permission set is already on the context.
-        PermissionGuard guard = new PermissionGuard(null);
+        // Neither collaborator is consulted: the principal and the permission set are already on the
+        // request context, which is the attribute the guard caches after resolving.
+        PermissionGuard guard = new PermissionGuard(null, null);
 
         return Guice.createInjector(
                 new WebModule(),

@@ -103,22 +103,30 @@ class AdminIntegrationTest {
             assertThat(client.post("/api/v1/auth/login",
                     Map.of("identifier", "admin@keystone", "password", "new-password")).code()).isEqualTo(403);
 
-            // Create a tenant (with slug) and a tenant user (username -> derived email).
-            var tenant = client.post("/api/v1/tenants", Map.of("name", "Acme", "slug", "acme"),
+            // Create a tenant (with slug and country) and a tenant user (username -> derived email).
+            var tenant = client.post("/api/v1/tenants",
+                    Map.of("name", "Acme", "slug", "acme", "country", "in"),
                     req -> req.header("Authorization", "Bearer test-token"));
             assertThat(tenant.code()).isEqualTo(201);
-            String tenantId = parseId(tenant.body().string());
+            // Read each body once: the test client streams it.
+            String tenantBody = tenant.body().string();
+            // The country is normalized to its canonical ISO 3166-1 alpha-2 form.
+            assertThat(tenantBody).contains("\"country\":\"IN\"");
+            String tenantId = parseId(tenantBody);
 
             var user = client.post("/api/v1/users", Map.of(
                             "username", "alice",
                             "tenantId", tenantId,
+                            "phoneNumber", "+91 98765 43210",
                             "temporaryPassword", "temp-pass",
                             "roles", java.util.List.of()),
                     req -> req.header("Authorization", "Bearer test-token"));
             assertThat(user.code()).isEqualTo(201);
-            // Read the body once: the test client streams it.
             String userBody = user.body().string();
-            assertThat(userBody).contains("\"username\":\"alice\"", "\"email\":\"alice@acme.com\"");
+            assertThat(userBody)
+                    .contains("\"username\":\"alice\"", "\"email\":\"alice@acme.com\"")
+                    // The phone number is normalized to E.164, so what is stored is what a dialler needs.
+                    .contains("\"phoneNumber\":\"+919876543210\"");
 
             // The tenant user can log in with username@tenantid.
             var tenantLogin = client.post("/api/v1/auth/login",
@@ -137,6 +145,15 @@ class AdminIntegrationTest {
                     .contains("\"platform\":true");
             assertThat(tenantList.indexOf("Keystone")).isLessThan(tenantList.indexOf("Acme"));
             assertThat(tenantList).contains("\"platform\":false");
+            // The country travels with the row; the platform tenant records none, so it reads as null.
+            assertThat(tenantList).contains("\"country\":\"IN\"", "\"country\":null");
+
+            // A patch replaces the country too — the update takes the same full body as create.
+            var reCountryed = client.patch("/api/v1/tenants/" + tenantId,
+                    Map.of("name", "Acme", "slug", "acme", "country", "gb"),
+                    req -> req.header("Authorization", "Bearer test-token"));
+            assertThat(reCountryed.code()).isEqualTo(200);
+            assertThat(reCountryed.body().string()).contains("\"country\":\"GB\"");
 
             // Users can be listed per plane: platform users, one tenant's users, or everyone.
             String platformUsers = client.get("/api/v1/users?tenantId=" + PlatformSchema.PLATFORM_TENANT_ID,
@@ -174,6 +191,60 @@ class AdminIntegrationTest {
                     req -> req.header("Authorization", "Bearer test-token"));
             // A rejected value is a ValidationException, which the RFC 9457 mapper answers as 422.
             assertThat(crossPlane.code()).isEqualTo(422);
+
+            // The access-level filter narrows the catalog to one level of the *code* — the segment every
+            // permission ends in — so the console's picker can offer "read-only grants only".
+            assertThat(client.get("/api/v1/permissions?access=read-only",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .contains("platform:tenant:read-only")
+                    .doesNotContain(":read-write");
+            assertThat(client.get("/api/v1/permissions?access=read-write",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .contains("platform:tenant:read-write")
+                    .doesNotContain(":read-only");
+            // A level that is neither is a rejected value, never a silently ignored filter.
+            assertThat(client.get("/api/v1/permissions?access=sideways",
+                    req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(422);
+
+            // A permission a tenant defines may be granted to that tenant's own role — and NOT to a global
+            // one: a global role's grants are held by every tenant, so a tenant-owned code there would leak
+            // one tenant's permission into all the others.
+            assertThat(client.post("/api/v1/permissions", Map.of(
+                            "code", "tenant:acme:audit:read-only",
+                            "scope", "TENANT",
+                            "tenantId", tenantId),
+                    req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(201);
+            assertThat(client.post("/api/v1/roles", Map.of(
+                            "code", "acme-auditor",
+                            "scope", "TENANT",
+                            "tenantId", tenantId,
+                            "permissions", java.util.List.of("tenant:acme:audit:read-only")),
+                    req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(201);
+            var globalRoleWithTenantPermission = client.post("/api/v1/roles", Map.of(
+                            "code", "everyone-auditor",
+                            "scope", "TENANT",
+                            "permissions", java.util.List.of("tenant:acme:audit:read-only")),
+                    req -> req.header("Authorization", "Bearer test-token"));
+            assertThat(globalRoleWithTenantPermission.code()).isEqualTo(422);
+            assertThat(globalRoleWithTenantPermission.body().string()).contains("global catalog only");
+
+            // The phone number is editable (unlike the email): a patch sets it, and a value that is not
+            // E.164 is a rejected value.
+            var rePhoned = client.patch("/api/v1/users/" + aliceId,
+                    Map.of("username", "alice-b", "phoneNumber", "+14155552671"),
+                    req -> req.header("Authorization", "Bearer test-token"));
+            assertThat(rePhoned.code()).isEqualTo(200);
+            assertThat(rePhoned.body().string()).contains("\"phoneNumber\":\"+14155552671\"");
+            assertThat(client.patch("/api/v1/users/" + aliceId,
+                    Map.of("username", "alice-b", "phoneNumber", "12345"),
+                    req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(422);
+
+            // A country that is not an ISO 3166-1 alpha-2 code is rejected on create and on update.
+            assertThat(client.post("/api/v1/tenants", Map.of("name", "Nope", "slug", "nope", "country", "IND"),
+                    req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(422);
+            assertThat(client.patch("/api/v1/tenants/" + tenantId,
+                    Map.of("name", "Acme", "slug", "acme", "country", "ZZ"),
+                    req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(422);
 
             // An administrator resets ANOTHER user's password: the target gets a temporary password and is
             // forced to change it on the next login.
@@ -222,6 +293,108 @@ class AdminIntegrationTest {
             assertThat(client.get("/api/v1/tenants",
                     req -> req.header("Authorization", "Bearer test-token")).body().string())
                     .doesNotContain("\"name\":\"Acme\"");
+        });
+    }
+
+    /**
+     * The point of this delivery: search and paging happen **on the server**, so a search finds a row that
+     * is not on the page the client happens to hold — and every window is consistent with the totals.
+     */
+    @Test
+    void should_page_search_and_filter_the_lists_on_the_server() {
+        Injector injector = buildInjector();
+        injector.getInstance(AdminMigrationRunner.class).migrate();
+        injector.getInstance(BootstrapRunner.class).bootstrap();
+
+        Javalin app = injector.getInstance(Javalin.class);
+
+        JavalinTest.test(app, (javalin, client) -> {
+            for (int index = 1; index <= 5; index++) {
+                assertThat(client.post("/api/v1/tenants",
+                        Map.of("name", "Tenant " + index, "slug", "tenant-" + index),
+                        req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(201);
+            }
+
+            // A page is a window with totals, not the whole list. Six rows = the pinned platform row + five
+            // tenants, so two rows per page is three pages.
+            String firstPage = client.get("/api/v1/tenants?size=2",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string();
+            assertThat(firstPage)
+                    .contains("\"page\":0", "\"size\":2", "\"totalElements\":6", "\"totalPages\":3")
+                    .contains("\"hasNext\":true", "\"hasPrevious\":false")
+                    .contains("\"name\":\"Keystone\"", "Tenant 1")
+                    .doesNotContain("Tenant 2");
+
+            String secondPage = client.get("/api/v1/tenants?size=2&page=1",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string();
+            assertThat(secondPage)
+                    .contains("\"page\":1", "\"hasPrevious\":true")
+                    .contains("Tenant 2", "Tenant 3")
+                    // No row appears on two pages, and none is skipped between them.
+                    .doesNotContain("Tenant 1", "Tenant 4", "\"name\":\"Keystone\"");
+
+            // The search is applied by the server, so it finds a tenant that sorts past the first page.
+            String found = client.get("/api/v1/tenants?q=tenant-5&size=2",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string();
+            assertThat(found)
+                    .contains("\"totalElements\":1", "Tenant 5")
+                    .doesNotContain("Tenant 1")
+                    // The pinned row is searched like any other: a result may not contain a row that does
+                    // not match the term.
+                    .doesNotContain("\"name\":\"Keystone\"");
+
+            assertThat(client.get("/api/v1/tenants?q=key",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .contains("\"name\":\"Keystone\"");
+
+            // LIKE wildcards are literal: `%` is a character, not "everything".
+            assertThat(client.get("/api/v1/tenants?q=%25",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .contains("\"totalElements\":0");
+
+            // A published sort key works; an unpublished one, a bad direction, an oversized page and a
+            // negative page are all refused rather than ignored.
+            assertThat(client.get("/api/v1/tenants?sort=slug&order=desc",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .contains("\"items\"");
+            assertThat(client.get("/api/v1/tenants?sort=nope",
+                    req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(422);
+            assertThat(client.get("/api/v1/tenants?order=sideways",
+                    req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(422);
+            assertThat(client.get("/api/v1/tenants?size=101",
+                    req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(422);
+            assertThat(client.get("/api/v1/tenants?page=-1",
+                    req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(422);
+            assertThat(client.get("/api/v1/tenants?q=" + "a".repeat(101),
+                    req -> req.header("Authorization", "Bearer test-token")).code()).isEqualTo(422);
+
+            // A stale page is not an error: an empty window with the real totals.
+            assertThat(client.get("/api/v1/tenants?page=99",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .contains("\"items\":[]", "\"totalElements\":6");
+
+            // The pickers read the unpaged options route — a complete set, not a page of one.
+            assertThat(client.get("/api/v1/tenants/options",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .contains("\"truncated\":false", "\"name\":\"Keystone\"", "Tenant 5");
+
+            // The other three lists answer in the same shape, and their own filters still apply.
+            assertThat(client.get("/api/v1/users?q=nobody",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .contains("\"items\":[]", "\"totalElements\":0");
+            assertThat(client.get("/api/v1/roles?q=admin&scope=TENANT",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .contains("tenant-admin")
+                    .doesNotContain("platform-admin");
+            assertThat(client.get("/api/v1/roles/options",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .contains("\"items\":[", "tenant-admin");
+            assertThat(client.get("/api/v1/permissions?q=platform%3Atenant",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .contains("platform:tenant:read-only");
+            assertThat(client.get("/api/v1/permissions?scope=TENANT",
+                    req -> req.header("Authorization", "Bearer test-token")).body().string())
+                    .doesNotContain("platform:tenant:read-only");
         });
     }
 

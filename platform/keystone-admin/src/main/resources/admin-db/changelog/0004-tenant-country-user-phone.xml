@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Optional descriptive fields: a tenant's country (ISO 3166-1 alpha-2) and a user's phone number
+         (E.164). Both are nullable — every existing row is already valid and nothing backfills them — and
+         both are validated by the application, not by the database, so the accepted set (the JDK's ISO
+         list) can move without a migration. -->
+
+    <changeSet id="0004-tenant-country" author="keystone">
+        <!-- Guarded on the table existing as well as on the column being absent: 0001's precondition marks
+             the whole changeset ran when `tenants` already exists (an externally-initialized schema), so a
+             changeset that only checked "column absent" would try to alter a table that was never created. -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="tenants"/>
+                <not>
+                    <columnExists tableName="tenants" columnName="country"/>
+                </not>
+            </and>
+        </preConditions>
+        <addColumn tableName="tenants">
+            <column name="country" type="VARCHAR(2)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="0004-user-phone" author="keystone">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="users"/>
+                <not>
+                    <columnExists tableName="users" columnName="phone_number"/>
+                </not>
+            </and>
+        </preConditions>
+        <addColumn tableName="users">
+            <column name="phone_number" type="VARCHAR(32)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

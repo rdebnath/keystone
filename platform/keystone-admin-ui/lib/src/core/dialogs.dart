@@ -42,26 +42,52 @@ Future<String?> promptText(
   required String title,
   required String label,
 }) {
-  final controller = TextEditingController();
   return showDialog<String>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
+    builder: (_) => _PromptTextDialog(title: title, label: label),
+  );
+}
+
+/// The prompt itself. It owns its [TextEditingController], so the controller is disposed with the
+/// dialog rather than being left for the garbage collector to reach whenever it likes.
+class _PromptTextDialog extends StatefulWidget {
+  const _PromptTextDialog({required this.title, required this.label});
+
+  final String title;
+  final String label;
+
+  @override
+  State<_PromptTextDialog> createState() => _PromptTextDialogState();
+}
+
+class _PromptTextDialogState extends State<_PromptTextDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
       content: TextField(
-        controller: controller,
+        controller: _controller,
         autofocus: true,
-        decoration: InputDecoration(labelText: label),
+        decoration: InputDecoration(labelText: widget.label),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(ctx),
+          onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: () => Navigator.pop(ctx, controller.text),
+          onPressed: () => Navigator.pop(context, _controller.text),
           child: const Text('Create'),
         ),
       ],
-    ),
-  );
+    );
+  }
 }

@@ -13,12 +13,16 @@ import com.chetana.keystone.platform.admin.identity.MeService;
 import com.chetana.keystone.platform.admin.identity.PermissionResolver;
 import com.chetana.keystone.platform.admin.permission.PermissionHandler;
 import com.chetana.keystone.platform.admin.permission.PermissionService;
+import com.chetana.keystone.platform.admin.permission.TenantPermissionHandler;
 import com.chetana.keystone.platform.admin.role.RoleHandler;
+import com.chetana.keystone.platform.admin.role.RoleSeeder;
 import com.chetana.keystone.platform.admin.role.RoleService;
+import com.chetana.keystone.platform.admin.role.TenantRoleHandler;
 import com.chetana.keystone.platform.admin.supabase.SupabaseAdminClient;
 import com.chetana.keystone.platform.admin.supabase.SupabaseHttpAdminClient;
 import com.chetana.keystone.platform.admin.tenant.TenantHandler;
 import com.chetana.keystone.platform.admin.tenant.TenantService;
+import com.chetana.keystone.platform.admin.user.TenantUserHandler;
 import com.chetana.keystone.platform.admin.user.UserHandler;
 import com.chetana.keystone.platform.admin.user.UserService;
 import com.chetana.keystone.web.RouteConfigurer;
@@ -41,6 +45,7 @@ public final class AdminModule extends AbstractModule {
         bind(MeService.class);
         bind(TenantService.class);
         bind(RoleService.class);
+        bind(RoleSeeder.class);
         bind(PermissionService.class);
         bind(UserService.class);
         bind(BootstrapRunner.class);
@@ -54,5 +59,9 @@ public final class AdminModule extends AbstractModule {
         routes.addBinding().to(RoleHandler.class);
         routes.addBinding().to(PermissionHandler.class);
         routes.addBinding().to(UserHandler.class);
+        // The tenant self-service plane: a tenant administers its own users, roles and permissions.
+        routes.addBinding().to(TenantRoleHandler.class);
+        routes.addBinding().to(TenantPermissionHandler.class);
+        routes.addBinding().to(TenantUserHandler.class);
     }
 }

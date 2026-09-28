@@ -9,6 +9,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **An access-level filter on the permission catalogue** — `GET /api/v1/permissions` and
+  `GET /api/v1/tenant/permissions` accept `access=read-only` / `access=read-write`, matched as the **last segment
+  of the code** (so the wildcard `*`, which carries no level, belongs to neither set). It composes with
+  `q`/`scope`/`tenantId` and the page window, is validated like every other parameter (an unknown value is a
+  `422`, an absent one filters nothing), and both planes serve it. The console's Permissions screen and the role
+  picker gained a **Level** control for it, carried in the URL as `access=…` so a filtered catalogue survives a
+  refresh and can be linked.
+
+- **Server-side search, filtering and paging on every list** — the four admin lists (`tenants`, `users`,
+  `roles`, `permissions`) are now paged, searched and filtered **by the server**, on both planes
+  (`/api/v1/…` and `/api/v1/tenant/…`), so a search covers the whole collection rather than the page the
+  console happens to be showing. Every list route takes `page` (0-based, ≤ 10 000), `size` (1–100, default
+  25), `sort` + `order` (per-resource whitelists, with `id`/`code` tiebreakers so a page window is
+  stable), `q` (a ≤ 100-character case-insensitive *contains* over the resource's documented columns,
+  with `%`, `_` and `\` escaped so a search stays a search) and its existing filters (`tenantId`, plus
+  `scope` on roles and permissions). An invalid window, an unknown sort key or an over-long term is a
+  `422`; a page past the end is `200` with the real totals; **paging never widens visibility**, since the
+  window is applied to exactly the `WHERE` the unpaged list used. The synthetic platform tenant is a
+  **pinned, searchable first row** — counted in `totalElements`, and absent from a result whose term it
+  does not match. **Breaking:** a list response is no longer a bare JSON array but a typed page envelope
+  (`{items, page, size, totalElements, totalPages, hasNext, hasPrevious}`); the console in this
+  repository is updated in the same change and no other client exists. Three new **unpaged** `/options`
+  routes (`/api/v1/tenants/options`, `/api/v1/roles/options`, `/api/v1/tenant/roles/options`) serve the
+  console's pickers — a dropdown must offer every choice, so a page cannot feed it — capped at 500 rows
+  and reporting `truncated` rather than cutting a set short silently. The vocabulary is shared, not
+  per-service: `PageRequest`, `Page`, `OptionList`, `SortOrder` and `SearchTerm` in `keystone-common`
+  (`com.chetana.keystone.common.query`), `Search` in `keystone-data`, `QueryParams` in `keystone-web`,
+  plus `0005-paging-indexes.xml` for the indexes each default order needs (`idx_tenants_name`,
+  `idx_users_username`, `idx_users_tenant_username`). The admin console gains a debounced search box,
+  filters, a sort control and a pager on every list, two distinct empty states, list state in the URL,
+  and the shared `SearchField`/`ListToolbar`/`PagedListView`/`PaginationBar`/`SortSelect` widgets that
+  make those rules the default. A list toolbar lines up as one row — the search box's label floats like
+  the dropdowns', and the sort key's direction toggle lives **inside** the sort field — so controls of
+  different heights share one top edge instead of drifting apart (`docs/UX_GUIDELINES.md` §1.16). The
+  rules themselves are written down in the new **`docs/UX_GUIDELINES.md`** (§1), referenced by both
+  coding guidelines and by `AGENTS.md`.
+
+- **A country on a tenant, and a phone number on a user** — `tenants` gains a nullable `country` and
+  `users` a nullable `phone_number`. Both are optional and validated server-side on write: the country
+  is trimmed and upper-cased against the JDK's officially assigned ISO 3166-1 alpha-2 codes (`in` →
+  `IN`, `IND` → `422`), and the phone number has the separators a human types (spaces, hyphens, dots,
+  parentheses) stripped before the E.164 rule is applied, so `+91 98765 43210` stores as
+  `+919876543210` and a number that is not E.164 answers `422`. An absent or blank value clears the
+  field instead of being rejected; nothing is backfilled, so every existing tenant and user stays
+  valid. `GET`/`POST /api/v1/tenants`, `GET`/`POST /api/v1/users` and
+  `PATCH /api/v1/users/{id}` — plus the tenant self-service plane's user routes — carry the new
+  fields; `PATCH` clears a blank or absent one, consistent with the full-body update semantics the
+  tenant routes already had for `name`/`slug`. The admin console's tenant dialog gains a **Country**
+  field and the user editor a **Phone number** field on both the create and edit forms, and each row
+  shows its value when recorded. `GET /api/v1/me` is deliberately unchanged.
+
+- **Tenant-scoped roles and permissions, and a tenant self-service plane** — `roles` and `permissions`
+  gain an optional **owner** (`tenant_id`): `NULL` is the global platform-defined catalog (usable by the
+  platform plane and every tenant), a tenant id is a row only that tenant and the platform plane can
+  see. `code` is now unique **per owner** rather than globally, so two tenants can each have a `manager`
+  role. Every tenant is seeded — in the same transaction that creates it — with its own `admin` role,
+  the mirror of `platform-admin`, granted the **read/write** `TENANT`-scope codes only (a read/write
+  grant already satisfies read). A holder of that role administers its own tenant through the new plane:
+  `/api/v1/tenant/users` (list/create/update/delete, plus `PUT …/{id}/roles` and `PUT …/{id}/password`),
+  `/api/v1/tenant/roles` and `/api/v1/tenant/permissions`, guarded by `tenant:user|role|permission:*`.
+  The tenant is always derived from the caller's own user row — a tenant route has no path, query or body
+  field that could name one — and a platform caller is refused there. Guardrails: grant only what you
+  hold (holding a read/write code counts as holding the read-only one) and never the wildcard; a global
+  row is read-only to a tenant; another tenant's row is a `404`; a tenant may not re-define a code the
+  global catalog already carries; and the seeded `platform-admin` / `admin` roles can no longer be
+  renamed or deleted on either plane. Deleting a tenant now removes the roles and permissions it owns, and
+  `GET /api/v1/roles|permissions` accept `?tenantId=`.
+
 - **Platform as an embedded library** — the platform admin console is no longer a standalone app;
   it is now two hosted libraries, `platform/keystone-admin` (backend) and
   `platform/keystone-admin-ui` (Flutter UI). `apps/inventory` hosts them: its server serves the
@@ -145,6 +213,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A role's permissions are now picked from the catalogue, not typed** — the admin console's create-role
+  dialog asked for permission codes as free text (`Permissions (comma-separated)`), the one place a grant
+  could be chosen and the one place a typo, a missing access level or a code of the wrong scope became a
+  `422`. The field is now a **browsable picker** over the same paged, searchable catalogue the Permissions
+  screen lists (`GET /api/v1/permissions` · `/api/v1/tenant/permissions`, unchanged): server-side search,
+  sort and paging, the shared list states, the totals described (`1–25 of 43 · Page 1 of 2`), and a selection
+  that survives paging and searching — with a count and a removable chip per code, so a set gathered across
+  pages is reviewable before it is saved. The picker's query is **seeded from the role's owner and scope**, so
+  every row offered is one `RoleService.grantPermissions` would accept; the scope is stated as text rather
+  than offered as a filter that could only produce refusals, and a code the caller may not grant
+  (`CallerScope.requireGrantable`: never the wildcard, never a code it does not hold — write implying read) is
+  rendered **disabled with the reason** rather than selected and then refused. Changing the role's owner or
+  scope drops the picks that no longer match and names them. **Roles also gained *Edit*** (`PATCH
+  /api/v1/roles/{id}`, which the backend already exposed): the same dialog, prefilled, with the owner and a
+  tenant-owned role's scope read-only because both are immutable server-side, and with no *Edit* action at all
+  for the immutable seeded roles. **Console-only change** — no API, DTO, guard, database or deployment
+  change; `docs/UX_GUIDELINES.md` §1.17 ("a picker over a set too large for one control is a paged list") was
+  added to say how such a picker must behave.
+- **A role or permission `code` no longer identifies one row** — `roles.code` and `permissions.code` were
+  globally unique; they are now unique **per owner** (see Added), so a code can be carried by the global
+  catalog and by any number of tenants. Lookups are owner-scoped, and a tenant may not re-define a code
+  the catalog already carries, so a code still resolves to one row for a given caller. `roles` and
+  `permissions` also gained a `tenantId` field on their DTOs and requests, and `GET /api/v1/roles` /
+  `GET /api/v1/permissions` an optional `?tenantId=` filter.
+- **The seeded administrative roles are now immutable** — `platform-admin` could be deleted by anyone
+  holding `platform:role:read-write`, which locked the platform out of its own console; it and each
+  tenant's `admin` now refuse rename and delete on both planes.
+
+- **The first platform admin's username and email are per-environment yaml values** — `AdminConfigLoader`
+  no longer carries built-in `admin` / `admin@keystone.com` fallbacks, and `admin-config/application.yaml`
+  now holds them as blank, documented placeholders. Each deployment sets `bootstrap.adminUsername` /
+  `bootstrap.adminEmail` in `admin-config/application-{env}.yaml` (`dev` and `demo` carry the previous
+  values), so a different login name and email — e.g. to avoid a clash in a shared Supabase project —
+  needs no code change. A missing value while the bootstrap is enabled now fails fast instead of
+  silently seeding the built-in identity. The password is unchanged: `BOOTSTRAP_ADMIN_PASSWORD`, then
+  yaml (the base file keeps `changeit` as a development default).
+
 - **The admin console's tab shell is replaced by the navigable shell** — `DashboardScreen` and its
   `TabBar` are gone; `AdminShell` plus the router's section routes take their place, and the console's
   menu, screens and REST client moved to `AdminRoutes`/`AdminClient`-backed providers. The hosting
@@ -238,6 +343,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failed the issuer check.
 
 ### Security
+
+- **A global role can no longer hold a tenant's own permission** — `RoleService` selected a grantable permission
+  with the *list* helper `ownerFilter`, where "no owner" means "no restriction", so a platform-defined (global)
+  role could be granted a permission a single tenant had defined for itself. A global role is held by every
+  tenant it is assigned to, so that made one tenant's own permission visible to all the others. Grants are now
+  decided by the role's own owner (`grantableTo`): the global catalog, plus the owner's own rows — and the
+  catalog alone for a role with no owner, refused with "a global role may hold the global catalog only". No rows
+  were migrated: an existing role keeps its grants until its next update, which now refuses to carry such a grant
+  forward. The console follows the rule — a role with no owner is picked from the global catalogue, and its owner
+  filter is gone.
 
 - Supabase service-role key and JWKS/issuer settings are server-only (env / Secret Manager); the
   client bundle ships only the public backend URL and Supabase anon key.

@@ -3,59 +3,56 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/dialogs.dart';
 import '../../core/errors.dart';
-import '../../core/panels.dart';
+import '../../core/lists.dart';
 import '../../core/password_field.dart';
 import '../../core/providers.dart';
+import '../../models/list_query.dart';
 import '../../models/models.dart';
 import '../../models/requests.dart';
 
-/// The users of one tenant, with edit and delete actions when [canManage]. Pass the reserved platform
-/// tenant id to list the platform users, or null for every user.
+/// The users of one page: the list body of both users screens, paged, searchable and filterable **by the
+/// server**, with edit, reset-password and delete actions when [canManage].
+///
+/// The query is owned by the screen (which also keeps it in the URL); this widget renders it and reports
+/// every change back through [onQueryChanged]. [showTenant] names each user's tenant — which is only
+/// meaningful when the list spans tenants.
 class UserList extends ConsumerWidget {
   const UserList({
     super.key,
-    required this.tenantId,
+    required this.query,
+    required this.onQueryChanged,
     required this.canManage,
     this.showTenant = false,
   });
 
-  final String? tenantId;
+  final ListQuery query;
+  final ValueChanged<ListQuery> onQueryChanged;
   final bool canManage;
-
-  /// Shows the user's tenant in the row subtitle — useful when the list spans tenants.
   final bool showTenant;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final users = ref.watch(usersProvider(tenantId));
-    final tenants = ref.watch(tenantsProvider).valueOrNull ?? const <Tenant>[];
-    return users.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => MessagePanel(
-        icon: Icons.error_outline,
-        message: apiErrorMessage(error, 'Failed to load users.'),
-        actionLabel: 'Retry',
-        onAction: () => ref.invalidate(usersProvider),
+    final users = ref.watch(usersPageProvider(query));
+    // Only a cross-tenant list names the tenant, and the names come from the unpaged options list: a page
+    // would label only the tenants it happened to hold (`docs/UX_GUIDELINES.md` §1.13).
+    final tenants = showTenant
+        ? ref.watch(tenantOptionsProvider).valueOrNull?.items ?? const <Tenant>[]
+        : const <Tenant>[];
+    return PagedListView<User>(
+      value: users,
+      query: query,
+      onQueryChanged: onQueryChanged,
+      onRetry: () => ref.invalidate(usersPageProvider(query)),
+      emptyIcon: Icons.people_outline,
+      emptyMessage: 'No users yet.',
+      itemBuilder: (context, user) => _UserTile(
+        user: user,
+        canManage: canManage,
+        tenantLabel: showTenant ? _tenantName(tenants, user.tenantId) : null,
+        onEdit: () => showUserEditor(context, existing: user),
+        onResetPassword: () => showResetPasswordDialog(context, user),
+        onDelete: () => _delete(context, ref, user),
       ),
-      data: (items) => items.isEmpty
-          ? const MessagePanel(
-              icon: Icons.people_outline,
-              message: 'No users yet.',
-            )
-          : ListView.builder(
-              itemCount: items.length,
-              itemBuilder: (_, i) => _UserTile(
-                user: items[i],
-                canManage: canManage,
-                tenantLabel: showTenant
-                    ? _tenantName(tenants, items[i].tenantId)
-                    : null,
-                onEdit: () => showUserEditor(context, existing: items[i]),
-                onResetPassword: () =>
-                    showResetPasswordDialog(context, items[i]),
-                onDelete: () => _delete(context, ref, items[i]),
-              ),
-            ),
     );
   }
 
@@ -71,8 +68,8 @@ class UserList extends ConsumerWidget {
       return;
     }
     try {
-      await ref.read(apiClientProvider).deleteUser(user.id);
-      ref.invalidate(usersProvider);
+      await ref.read(consoleProvider).deleteUser(user.id);
+      ref.invalidate(usersPageProvider);
       if (context.mounted) {
         showApiSuccess(context, 'User deleted.');
       }
@@ -106,6 +103,7 @@ class _UserTile extends StatelessWidget {
     final roles = user.roles.isEmpty ? 'no roles' : user.roles.join(', ');
     final subtitle = [
       if (tenantLabel != null) tenantLabel!,
+      if (user.phoneNumber != null) user.phoneNumber!,
       roles,
       if (user.mustChangePassword) 'must change password',
     ].join(' · ');
@@ -231,13 +229,13 @@ class _ResetPasswordDialogState extends ConsumerState<_ResetPasswordDialog> {
     setState(() => _saving = true);
     try {
       await ref
-          .read(apiClientProvider)
+          .read(consoleProvider)
           .resetUserPassword(
             widget.user.id,
             ResetPasswordRequest(temporaryPassword: _password.text),
           );
       // The row now shows "must change password".
-      ref.invalidate(usersProvider);
+      ref.invalidate(usersPageProvider);
       if (mounted) {
         Navigator.pop(context, true);
       }
@@ -315,6 +313,9 @@ class _UserEditorDialogState extends ConsumerState<_UserEditorDialog> {
   );
   final _email = TextEditingController();
   final _password = TextEditingController();
+  late final TextEditingController _phone = TextEditingController(
+    text: widget.existing?.phoneNumber ?? '',
+  );
   late final Set<String> _checkedRoles = {...?widget.existing?.roles};
   bool _saving = false;
 
@@ -328,6 +329,7 @@ class _UserEditorDialogState extends ConsumerState<_UserEditorDialog> {
     _username.dispose();
     _email.dispose();
     _password.dispose();
+    _phone.dispose();
     super.dispose();
   }
 
@@ -353,32 +355,69 @@ class _UserEditorDialogState extends ConsumerState<_UserEditorDialog> {
     return tenants.isEmpty ? null : tenants.first;
   }
 
-  Future<void> _save(Tenant tenant) async {
+  /// The entered phone number, or null when the field is empty — a blank field clears the recorded
+  /// number rather than sending an empty string the backend would reject.
+  String? _phoneNumberOrNull() {
+    final number = _phone.text.trim();
+    return number.isEmpty ? null : number;
+  }
+
+  /// The phone-number field, shared by the create and the edit form. Only the shape is checked here
+  /// (every E.164 number starts with `+`); the rule itself — the length and the digits — is the
+  /// backend's, which answers 422 for a value it rejects.
+  Widget _phoneField() {
+    return TextFormField(
+      controller: _phone,
+      textInputAction: TextInputAction.next,
+      keyboardType: TextInputType.phone,
+      decoration: const InputDecoration(
+        labelText: 'Phone number',
+        helperText: 'Optional E.164 number, e.g. +919876543210',
+      ),
+      validator: (value) {
+        final number = value?.trim() ?? '';
+        if (number.isEmpty || number.startsWith('+')) {
+          return null;
+        }
+        return 'Start with + and the country code';
+      },
+    );
+  }
+
+  /// [tenant] is the target tenant on the platform plane; a tenant console has none to pass — the backend
+  /// scopes a new user to the caller, so the request carries no `tenantId` at all.
+  Future<void> _save(Tenant? tenant) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
     setState(() => _saving = true);
-    final api = ref.read(apiClientProvider);
+    final console = ref.read(consoleProvider);
     final roles = _checkedRoles.toList()..sort();
+    final phoneNumber = _phoneNumberOrNull();
     try {
       if (_creating) {
         final email = _email.text.trim();
-        await api.createUser(
+        await console.createUser(
           CreateUserRequest(
             username: _username.text.trim(),
-            tenantId: tenant.isPlatform ? null : tenant.id,
+            tenantId: tenant == null || tenant.isPlatform ? null : tenant.id,
             email: email.isEmpty ? null : email,
+            phoneNumber: phoneNumber,
             temporaryPassword: _password.text,
             roles: roles,
           ),
         );
       } else {
-        await api.updateUser(
+        await console.updateUser(
           widget.existing!.id,
-          UpdateUserRequest(username: _username.text.trim(), roles: roles),
+          UpdateUserRequest(
+            username: _username.text.trim(),
+            phoneNumber: phoneNumber,
+            roles: roles,
+          ),
         );
       }
-      ref.invalidate(usersProvider);
+      ref.invalidate(usersPageProvider);
       if (mounted) {
         Navigator.pop(context, true);
       }
@@ -392,8 +431,12 @@ class _UserEditorDialogState extends ConsumerState<_UserEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final tenants = ref.watch(tenantsProvider).valueOrNull ?? const <Tenant>[];
-    final tenant = _tenant(tenants);
+    final console = ref.watch(consoleProvider);
+    // Only the platform plane names a tenant, so only it needs — or can read — the tenant options.
+    final tenants = console.isPlatformPlane
+        ? ref.watch(tenantOptionsProvider).valueOrNull?.items ?? const <Tenant>[]
+        : const <Tenant>[];
+    final tenant = console.isPlatformPlane ? _tenant(tenants) : null;
     return AlertDialog(
       title: Text(_creating ? 'Add user' : 'Edit user'),
       content: SizedBox(
@@ -446,7 +489,9 @@ class _UserEditorDialogState extends ConsumerState<_UserEditorDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: _saving || tenant == null ? null : () => _save(tenant),
+          onPressed: _saving || (console.isPlatformPlane && tenant == null)
+              ? null
+              : () => _save(tenant),
           child: Text(_creating ? 'Create' : 'Save'),
         ),
       ],
@@ -456,45 +501,51 @@ class _UserEditorDialogState extends ConsumerState<_UserEditorDialog> {
   /// Create-only fields: the tenant (dropdown or fixed context), the optional email and the temporary
   /// password.
   List<Widget> _createFields(List<Tenant> tenants, Tenant? tenant) {
+    // The tenant is the platform plane's choice; a tenant console always creates for itself.
+    final platformPlane = ref.read(consoleProvider).isPlatformPlane;
     return [
-      if (widget.fixedTenant != null)
-        _ReadOnlyField(
-          label: 'Tenant',
-          value: widget.fixedTenant!.name,
-          hint: widget.fixedTenant!.isPlatform
-              ? 'Platform users — no tenant'
-              : 'username@${widget.fixedTenant!.slug}',
-        )
-      else
-        DropdownButtonFormField<String>(
-          initialValue: tenant?.id,
-          decoration: const InputDecoration(
-            labelText: 'Tenant',
-            helperText: 'Platform (Keystone) or a customer tenant',
-          ),
-          items: tenants
-              .map(
-                (row) => DropdownMenuItem(
-                  value: row.id,
-                  child: Text(
-                    row.isPlatform ? '${row.name} (platform)' : row.name,
+      if (platformPlane) ...[
+        if (widget.fixedTenant != null)
+          _ReadOnlyField(
+            label: 'Tenant',
+            value: widget.fixedTenant!.name,
+            hint: widget.fixedTenant!.isPlatform
+                ? 'Platform users — no tenant'
+                : 'username@${widget.fixedTenant!.slug}',
+          )
+        else
+          DropdownButtonFormField<String>(
+            initialValue: tenant?.id,
+            decoration: const InputDecoration(
+              labelText: 'Tenant',
+              helperText: 'Platform (Keystone) or a customer tenant',
+            ),
+            items: tenants
+                .map(
+                  (row) => DropdownMenuItem(
+                    value: row.id,
+                    child: Text(
+                      row.isPlatform ? '${row.name} (platform)' : row.name,
+                    ),
                   ),
-                ),
-              )
-              .toList(),
-          onChanged: (value) => setState(() => _selectedTenantId = value),
-        ),
-      const SizedBox(height: 12),
+                )
+                .toList(),
+            onChanged: (value) => setState(() => _selectedTenantId = value),
+          ),
+        const SizedBox(height: 12),
+      ],
       TextFormField(
         controller: _email,
         textInputAction: TextInputAction.next,
         decoration: InputDecoration(
           labelText: 'Email',
           helperText: tenant == null
-              ? 'Optional'
+              ? 'Optional — blank becomes username@<your tenant>.com'
               : 'Optional — blank becomes username@${tenant.isPlatform ? 'keystone' : tenant.slug}.com',
         ),
       ),
+      const SizedBox(height: 12),
+      _phoneField(),
       const SizedBox(height: 12),
       PasswordField(
         controller: _password,
@@ -508,7 +559,8 @@ class _UserEditorDialogState extends ConsumerState<_UserEditorDialog> {
   }
 
   /// Edit-only fields: the tenant and the email are the user's identity and are shown read-only. The
-  /// email is the Supabase Auth account the login flow authenticates with, so it is not editable here.
+  /// email is the Supabase Auth account the login flow authenticates with, so it is not editable here;
+  /// the phone number is plain profile data, so it is.
   List<Widget> _editFields() {
     final user = widget.existing!;
     return [
@@ -517,6 +569,8 @@ class _UserEditorDialogState extends ConsumerState<_UserEditorDialog> {
         value: user.email,
         hint: 'Supabase Auth identity — not editable',
       ),
+      const SizedBox(height: 12),
+      _phoneField(),
       if (user.mustChangePassword) ...[
         const SizedBox(height: 12),
         const ListTile(
@@ -562,7 +616,10 @@ class _RoleChecklist extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final roles = ref.watch(rolesProvider);
+    // Every role the console may assign. This is the **unpaged** options list on purpose: a checklist must
+    // offer all of them, and a page would hide the rest; the plane filter below picks the ones this user
+    // may hold.
+    final roles = ref.watch(roleOptionsProvider(null));
     return roles.when(
       loading: () => const Padding(
         padding: EdgeInsets.all(16),
@@ -570,9 +627,13 @@ class _RoleChecklist extends ConsumerWidget {
       ),
       error: (error, _) =>
           Text(apiErrorMessage(error, 'Could not load roles.')),
-      data: (all) {
-        final platform = tenant?.isPlatform ?? true;
-        final offered = all
+      data: (options) {
+        // The roles offered belong to the *user's* plane, not the console's: on the platform plane that is
+        // the chosen tenant's plane, and in a tenant console every user is in the caller's own tenant.
+        final platform = ref.watch(consoleProvider).isPlatformPlane
+            ? (tenant?.isPlatform ?? true)
+            : false;
+        final offered = options.items
             .where((role) => role.isPlatformScope == platform)
             .toList(growable: false);
         if (offered.isEmpty) {

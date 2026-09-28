@@ -5,9 +5,9 @@ import 'package:keystone_admin_ui/keystone_admin_ui.dart';
 
 import 'features/inventory/home_screen.dart';
 
-/// Declarative router with an auth gate and platform-vs-tenant routing: signed-out → login;
-/// first login → change password; platform user → the admin console (whose sections are the console
-/// shell's sub-routes); tenant user → inventory.
+/// Declarative router with an auth gate and plane routing: signed-out → login; first login → change
+/// password; platform user → the platform console; tenant user with a tenant console permission → the
+/// tenant console (the same screens on the tenant plane); any other tenant user → inventory.
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
   ref.onDispose(refresh.dispose);
@@ -33,7 +33,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/change-password';
       }
       if (!me.mustChangePassword && (atLogin || atChangePassword)) {
-        return me.isPlatformAdmin ? AdminRoutes.firstAllowed(me) : '/inventory';
+        return _home(me);
       }
       return null;
     },
@@ -71,6 +71,29 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      // The tenant console: the same screens, on the tenant plane, for a tenant that administers itself.
+      // The tenant is the caller's — the routes carry no tenant, so there is none to get wrong.
+      ShellRoute(
+        builder: (_, state, child) => AdminShell(
+          location: state.matchedLocation,
+          sections: AdminSection.tenantValues,
+          child: child,
+        ),
+        routes: [
+          GoRoute(
+            path: AdminRoutes.tenantUsers,
+            builder: (_, __) => const UsersScreen(),
+          ),
+          GoRoute(
+            path: AdminRoutes.tenantRoles,
+            builder: (_, __) => const RolesScreen(),
+          ),
+          GoRoute(
+            path: AdminRoutes.tenantPermissions,
+            builder: (_, __) => const PermissionsScreen(),
+          ),
+        ],
+      ),
       GoRoute(
         path: '/inventory',
         builder: (_, __) => const InventoryHomeScreen(),
@@ -78,3 +101,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Where a signed-in caller belongs: the platform console, a tenant's own console, or the app UI when the
+/// tenant holds no console permission at all.
+String _home(Me me) {
+  if (me.isPlatformAdmin) {
+    return AdminRoutes.firstAllowed(me);
+  }
+  return AdminRoutes.firstAllowedTenant(me) ?? '/inventory';
+}

@@ -168,6 +168,14 @@ Flutter client ──HTTPS/JSON──▶ Javalin (Java) ──jOOQ──▶ Supa
    application service.
 3. The service runs a jOOQ query/transaction against PostgreSQL and returns a typed DTO.
 4. Javalin serializes the DTO to JSON and returns the appropriate HTTP status.
+5. **List reads are paged, searched and filtered on the server.** A list route takes
+   `page`, `size`, `sort`, `order`, `q` plus the resource's own filters (`tenantId`, `scope`) and
+   answers with a typed page envelope —
+   `{ items, page, size, totalElements, totalPages, hasNext, hasPrevious }` — so a search covers the
+   whole collection, not the page the client happens to hold. Controls that must offer *every*
+   choice (a tenant or owner dropdown, a role checklist) read the resource's unpaged `/options`
+   endpoint instead of a page. The frozen contract is `docs/CODING_GUIDELINES_BACKEND.md` §8 (*List
+   endpoints*); the UX rules built on it are `docs/UX_GUIDELINES.md` §1.
 
 ### 5.2 Realtime streaming (broadcast)
 
@@ -271,7 +279,10 @@ Flutter client          Supabase Realtime              Java backend
   - Supabase Realtime service-role key (`REALTIME_SERVICE_ROLE_KEY`),
   - bootstrap admin password (`BOOTSTRAP_ADMIN_PASSWORD`).
 - Non-secret values (URLs, usernames, schema names, OIDC issuer/audience/JWKS URL, port, context
-  path, CORS allowed origins) live in the yaml files, not the environment.
+  path, CORS allowed origins) live in the yaml files, not the environment. The first platform admin's
+  identity is one of them: `bootstrap.adminUsername` / `bootstrap.adminEmail` are set per environment
+  in `admin-config/application-{env}.yaml` with **no built-in default**, so a deployment decides who
+  its bootstrap user is and a missing value fails fast when the bootstrap is enabled.
 - **Operational startup switches are the one non-secret exception**: they have a yaml default and may
   be flipped per deployment through an environment variable, so the same image can start with
   automatic migrations and/or the first-user bootstrap on or off.
@@ -320,8 +331,10 @@ Flutter client          Supabase Realtime              Java backend
   future extension via a join table.
 - The platform plane is surfaced to the admin console as a **synthetic tenant** named
   `Keystone` (`PlatformSchema.PLATFORM_TENANT_NAME`, reserved slug `keystone` and reserved id
-  `00000000-0000-0000-0000-000000000000`). `GET /api/v1/tenants` returns it first with
-  `platform: true` and null timestamps; it is never persisted (real tenant ids are random v4
+  `00000000-0000-0000-0000-000000000000`). `GET /api/v1/tenants` returns it as the **pinned first row**
+  of the **paged list**: page 0's first item, counted in `totalElements`, and searchable by `q` like any
+  other row (`platform: true`, null timestamps) — so it is absent from a result whose term it does not
+  match. It is never persisted (real tenant ids are random v4
   UUIDs), writes addressing it are rejected with `422`, and passing its id as `tenantId` selects
   the platform users (`users.tenant_id IS NULL`). This lets the console list and edit platform
   users exactly like a tenant's users. The reserved slug is also rejected for tenant creation
@@ -341,44 +354,77 @@ Flutter client          Supabase Realtime              Java backend
   `tenant:<resource>:*` for tenants, roles, permissions and users) plus the `*` wildcard, which only
   `platform-admin` holds. Role assignment is a write on the user resource
   (`platform:user:read-write`), not a permission of its own.
+- Roles and permissions are **owned**: `tenant_id IS NULL` is the *global* catalog, applicable to the
+  platform plane **and every tenant**; a tenant id is a row only that tenant (and the platform plane)
+  can see and use. Ownership is orthogonal to `scope`, with one guardrail — a tenant-owned row must be
+  `TENANT` scope, so a tenant can never own a cross-tenant capability. `code` is therefore unique **per
+  owner**, not globally: two tenants can each have a `manager` role, and a tenant may not re-define a
+  code the global catalog already carries (a code never means two things for one caller).
+- The two **seeded administrative roles** mirror each other: the global `platform-admin` (the wildcard)
+  and one tenant-owned `admin` per tenant, granted the **read/write** `TENANT`-scope codes only — a
+  read/write grant already satisfies every read check, so the read-only codes would be redundant. Both
+  are immutable (they cannot be renamed or deleted on either plane), so nobody can lock themselves out.
 
 ### 9.4 Schema
 
 ```sql
-tenants          (id uuid PK, name text, ...)
+tenants          (id uuid PK, name text, slug text UNIQUE, ...)
 users            (id uuid PK, sub text UNIQUE, tenant_id uuid NULL REFERENCES tenants, ...)
-roles            (id uuid PK, code text, scope text CHECK (scope IN ('PLATFORM','TENANT')))
-permissions      (id uuid PK, code text, scope text CHECK (scope IN ('PLATFORM','TENANT')))
+roles            (id uuid PK, code text, scope text CHECK (scope IN ('PLATFORM','TENANT')),
+                  tenant_id uuid NULL REFERENCES tenants, ...)
+permissions      (id uuid PK, code text, scope text CHECK (scope IN ('PLATFORM','TENANT')),
+                  tenant_id uuid NULL REFERENCES tenants, ...)
 role_permissions (role_id FK, permission_id FK, PRIMARY KEY (role_id, permission_id))
-user_roles       (user_id FK, role_id FK, tenant_id uuid NULL, PRIMARY KEY (user_id, role_id, tenant_id))
+user_roles       (user_id FK, role_id FK, tenant_id uuid NULL, PRIMARY KEY (user_id, role_id))
 ```
 
-- `user_roles.tenant_id` is `NULL` for platform roles and set for tenant roles; `CHECK`
-  constraints enforce that `TENANT` roles always carry a tenant and `PLATFORM` roles never do.
+- `tenant_id` is the row's **owner** on `roles` and `permissions`: `NULL` = the global catalog, a
+  tenant id = owned by that tenant. `CHECK (tenant_id IS NULL OR scope = 'TENANT')` keeps a tenant from
+  owning a cross-tenant capability.
+- `code` is unique **per owner**: `UNIQUE (code, tenant_id)` for tenant rows plus a **partial** unique
+  index `(code) WHERE tenant_id IS NULL` for the global pool — a plain `UNIQUE (code, tenant_id)`
+  would let two global rows share a code, because a unique index treats `NULL`s as distinct.
+- `user_roles.tenant_id` is `NULL` for platform roles and set for tenant roles; a tenant-owned role can
+  only be assigned inside its own tenant, and a `PLATFORM`-scope role never goes to a tenant user. These
+  plane rules are enforced in the services (they span tables, so they are not expressible as a `CHECK`).
 - Effective permissions are computed as `user_roles ⋈ role_permissions`, filtered by
   `ur.tenant_id IS NULL OR ur.tenant_id = :tenantContext`.
+- Indexes exist for the queries the code runs, not speculatively: `idx_roles_tenant_code` /
+  `idx_permissions_tenant_code` (the owner-scoped list), `idx_role_permissions_permission`
+  ("roles holding a permission"), `idx_user_roles_tenant` and `idx_users_tenant`.
 
 ### 9.5 Delegated administration
 
-- **Platform admin** provisions tenants, seeds each tenant's first admin, and assigns
-  platform roles. Resetting a user's password is part of that grant: it is a write on `platform:user`
-  (`PUT /api/v1/users/{id}/password`), it sets a *temporary* password that forces a change on the user's
-  next login, and it **refuses the caller's own account** — your own password goes through the verified
-  change-password flow, so holding the user-write grant never makes the current-password proof optional.
-- **Tenant admin** creates users within their own tenant and assigns **tenant-scoped** roles
-  only.
+- **Platform admin** provisions tenants — which **seeds that tenant's `admin` role in the same
+  transaction** — and each tenant's first admin, and assigns platform roles. Resetting a user's password
+  is part of that grant: it is a write on `platform:user` (`PUT /api/v1/users/{id}/password`), it sets a
+  *temporary* password that forces a change on the user's next login, and it **refuses the caller's own
+  account** — your own password goes through the verified change-password flow, so holding the user-write
+  grant never makes the current-password proof optional.
+- **Tenant admin** — a holder of the tenant's own `admin` role — creates and manages **its own
+  tenant's** users, roles and permissions, and nothing outside it.
 - **Guardrails**:
-  - *Scope* — a tenant admin cannot grant a `PLATFORM` role.
-  - *No escalation* — a tenant admin can only grant roles whose permissions are a subset of
-    their own ("grant only what you hold").
-  - *Catalog* — roles start as a **platform-defined catalog**; tenant-defined custom roles
-    are a later option.
+  - *Scope* — a tenant admin cannot grant a `PLATFORM`-scope role or permission; everything a tenant
+    owns is `TENANT` scope (the database `CHECK` is the backstop).
+  - *No escalation* — a tenant admin can only grant permissions it holds and assign roles whose
+    permissions are a subset of its own ("grant only what you hold"), and never the wildcard. Holding a
+    read/write code counts as holding the read-only code of the same resource (write implies read).
+  - *Ownership* — a global row is read-only to a tenant (`403`), another tenant's row simply does not
+    exist for it (`404`), and the seeded admin roles are immutable on both planes.
+  - *Catalog* — roles start as a **platform-defined catalog** (`tenant_id IS NULL`); a tenant may add
+    its **own** roles and permissions, but may not re-define a code the catalog already carries.
 
 ### 9.6 Enforcement
 
-- **Backend (authoritative)**: a `@RequirePermission(...)` guard at the handler boundary plus
-  explicit checks in services for resource-level rules (ownership). Denial throws
-  `AccessDeniedException` → RFC 9457 `403`.
+- **Two planes, two guard families**: the platform plane (`/api/v1/…`, `platform:<resource>:*`) and the
+  **tenant self-service** plane (`/api/v1/tenant/…`, `tenant:<resource>:*`). Both are authoritative.
+- **The tenant is derived, never supplied.** `PermissionGuard.callerScope(ctx)` resolves the caller's
+  tenant from its own `users` row and their effective permissions **in that tenant's context**. A tenant
+  route has no path segment, query parameter or body field that could name a tenant — which is what makes
+  cross-tenant access structurally impossible rather than merely filtered — and a platform caller is
+  refused on those routes (`403`), since it has the platform plane for the same resources.
+- **Backend (authoritative)**: the guard at the handler boundary plus explicit ownership checks in the
+  services. Denial throws `AccessDeniedException` → RFC 9457 `403`.
 - **Frontend (UX only)**: the backend exposes the effective set via `GET /me`
   (`sub`, `username`, `tenantId`, `permissions[]`). The Flutter client renders controls from it
   (Riverpod + `go_router` redirect + per-resource capability flags on DTOs). The console's

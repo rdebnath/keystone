@@ -164,6 +164,32 @@ Realtime**.
 - Implement reconnect with exponential backoff and **resubscribe** on reconnect; handle
   offline gracefully.
 
+### 7.3 List screens (search, filtering & paging)
+
+A list screen shows **one page** of a server-paged collection and lets the user search, filter, sort
+and page through it. The normative UX rules are `docs/UX_GUIDELINES.md` §1; the REST contract is
+`docs/CODING_GUIDELINES_BACKEND.md` §8 (*List endpoints*).
+
+- **Consume the envelope, never an array**: the response model is `Paged<T>` (`items`, `page`,
+  `size`, `totalElements`, `totalPages`, `hasNext`, `hasPrevious`). Never recompute the totals — the
+  server is the only authority on what the last page is.
+- **One `ListQuery` per screen** (`tenantId`, `search`, `page`, `size`, `sort`, `order`): the same
+  value is the provider family key, the URL payload and the "did the query change?" check. `freezed`
+  gives it value equality, so a rebuild does not refetch a list.
+- **Providers are `FutureProvider.autoDispose.family<…, ListQuery>`** keyed by the query, so each
+  query keeps its own cache and a screen that is left behind releases it.
+- **Build the screen from the shared widgets** in `lib/src/core/lists.dart` (`SearchField`,
+  `ListToolbar`, `PagedListView`, `PaginationBar`, `SortSelect`) plus `MessagePanel`: they implement
+  the debounce, the reset to page 1 on a new query, the two empty states, keeping the previous rows
+  visible while loading, and the pager. Do not hand-roll a list.
+- **Never filter or re-sort a fetched page in the UI.** If a value is not in the query, it is not in
+  the search: filtering `items` searches the page the user happens to be looking at, which is exactly
+  the defect server-side lists exist to prevent.
+- **Reference data for pickers** comes from the resource's `/options` endpoint (`OptionList<T>`),
+  never from a page — a dropdown fed by page 1 offers only page 1 (`docs/UX_GUIDELINES.md` §1.13).
+- **List state lives in the URL** query string (`go_router`), so refresh, back/forward and a shared
+  link preserve the term, the filters, the page, the size and the sort.
+
 ## 8. Configuration & Environment
 
 - Environment-specific values come in at build time via `--dart-define`
@@ -263,6 +289,11 @@ survives renames silently, and turns a typo or a server-side change into a runti
 - **Be liberal in what you accept.** Extra JSON fields are ignored by default; give new fields
   a default or make them nullable so an old client survives a server-first deploy; map a
   missing required field to a typed failure (§9) instead of letting a `TypeError` escape.
+- **Response envelopes are typed models too.** A paged list is `Paged<T>` and a picker set is
+  `OptionList<T>` (`models/envelopes.dart`) — small hand-written immutable generics, because
+  `json_serializable` generates per-class code and a generic envelope would otherwise be copied once
+  per resource. They exist so that `items` is parsed into models at the client boundary and no map
+  traversal ever reaches a widget (§7.3).
 - **Realtime payloads are typed too**: decode the versioned envelope (event id, timestamp,
   aggregate id, version, payload) into a `freezed` model, switch on it exhaustively, ignore
   unknown versions, and never index a `Map<String, dynamic>` inside the subscription callback

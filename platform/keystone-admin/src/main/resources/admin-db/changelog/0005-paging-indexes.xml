@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Indexes for the paged list queries (docs/delivery/search-and-paging, phase 2).
+
+         Paging turns every list read into `WHERE <visibility> ORDER BY <default order> LIMIT n OFFSET m`,
+         so each default order needs an index or every page costs a sort of the whole table. Purely
+         additive: no table, column or constraint changes, and jOOQ codegen (which reads this changelog)
+         is unaffected because indexes generate no types.
+
+         Search (`q`) is a leading-wildcard ILIKE and cannot use a B-tree; that is a known, accepted
+         scan on these catalog-sized tables, with a pg_trgm GIN index recorded as the follow-up. -->
+
+    <changeSet id="0005-tenants-name-index" author="keystone">
+        <!-- Guarded on the table existing as well as on the index being absent, exactly as 0003/0004: 0001's
+             precondition marks the whole changeset ran when `tenants` already exists (an externally
+             initialized schema), so a guard that only checked "index absent" would try to index a table
+             that was never created. -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="tenants"/>
+                <not>
+                    <indexExists indexName="idx_tenants_name"/>
+                </not>
+            </and>
+        </preConditions>
+        <createIndex tableName="tenants" indexName="idx_tenants_name">
+            <column name="name"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="0005-users-username-index" author="keystone">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="users"/>
+                <not>
+                    <indexExists indexName="idx_users_username"/>
+                </not>
+            </and>
+        </preConditions>
+        <!-- The platform plane's default user list has no tenant filter (`GET /api/v1/users`), so it needs
+             the plain `username` order; the tenant-scoped list is served by the composite index below. -->
+        <createIndex tableName="users" indexName="idx_users_username">
+            <column name="username"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="0005-users-tenant-username-index" author="keystone">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="users"/>
+                <not>
+                    <indexExists indexName="idx_users_tenant_username"/>
+                </not>
+            </and>
+        </preConditions>
+        <!-- One index for the tenant-scoped default order (`WHERE tenant_id = ? ORDER BY username`): the
+             leading `tenant_id` also serves the plain tenant filter, which makes `idx_users_tenant` (0003)
+             redundant. It is deliberately left in place — 0003 is applied, and an applied changeset is
+             never edited; dropping it is a separate, reviewed change (recorded as a follow-up). -->
+        <createIndex tableName="users" indexName="idx_users_tenant_username">
+            <column name="tenant_id"/>
+            <column name="username"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Not indexed here: the roles/permissions default order is `tenant_id ASC NULLS FIRST, code ASC`, and
+         a NULLS FIRST ordering is not served by a plain (tenant_id, code) index — PostgreSQL's forward scan
+         of a default index yields NULLS LAST, and Liquibase's createIndex has no nulls-first option. Both
+         tables are catalog-sized (tens of rows, seeded at bootstrap), so the sort is negligible; if the
+         catalog ever grows, the fix is a dedicated index/expression in a later changeset. -->
+</databaseChangeLog>

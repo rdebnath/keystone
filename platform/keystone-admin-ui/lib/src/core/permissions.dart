@@ -17,6 +17,34 @@ abstract final class PlatformResource {
   static const String user = 'platform:user';
 }
 
+/// The resource namespaces of the **tenant self-service** plane: what a tenant administers about
+/// itself, and the resources the tenant console's sections are gated on.
+abstract final class TenantResource {
+  static const String user = 'tenant:user';
+  static const String role = 'tenant:role';
+  static const String permission = 'tenant:permission';
+}
+
+/// The **seeded administrative role** codes, mirrored from the backend's `PermissionCatalog` so the console
+/// can tell an immutable role from an editable one without asking the server.
+abstract final class SeededRole {
+  /// The global role that holds the wildcard, seeded by the platform bootstrap.
+  static const String platformAdmin = 'platform-admin';
+
+  /// The role every tenant is seeded with, holding its own plane's read/write grants.
+  static const String tenantAdmin = 'admin';
+}
+
+/// Whether [role] is one of the **seeded administrative roles** — the platform's global `platform-admin`, or
+/// a tenant's own `admin`.
+///
+/// Both are immutable server-side (`PermissionCatalog.isSeededAdminRole`): "without this a single role-write
+/// holder could delete the only role that grants them back in". The console therefore offers no *Edit*
+/// action for them at all, instead of letting a user compose a change the backend will refuse with a `403`.
+bool isSeededAdminRole(Role role) => role.isGlobal
+    ? role.code == SeededRole.platformAdmin
+    : role.code == SeededRole.tenantAdmin;
+
 /// One catalog resource a permission can be created for. The access level is chosen separately (a code
 /// is `<resource>:<level>`), so the scope is derived from the resource namespace rather than chosen by
 /// the user — which is what keeps the screen from composing an invalid `scope` + `code` pair.

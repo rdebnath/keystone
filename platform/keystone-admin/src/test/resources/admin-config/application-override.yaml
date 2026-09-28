@@ -1,0 +1,10 @@
+supabase:
+  url: https://override.supabase.co
+security:
+  issuer: https://override.supabase.co/auth/v1
+  audience: authenticated
+  jwksUrl: https://override.supabase.co/auth/v1/.well-known/jwks.json
+# A deployment that names its own first platform admin (the code carries no default to fall back to).
+bootstrap:
+  adminUsername: root
+  adminEmail: root@acme.test

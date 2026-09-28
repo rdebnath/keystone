@@ -4,6 +4,7 @@ import com.chetana.keystone.common.id.UuidIdGenerator;
 import com.chetana.keystone.common.time.SystemDateTimeService;
 import com.chetana.keystone.data.DataAccess;
 import com.chetana.keystone.platform.admin.config.AdminConfig;
+import com.chetana.keystone.platform.admin.role.RoleSeeder;
 import com.chetana.keystone.platform.admin.supabase.Session;
 import com.chetana.keystone.platform.admin.supabase.SupabaseAdminClient;
 import org.jooq.DSLContext;
@@ -31,7 +32,8 @@ class BootstrapRunnerTest {
                 new AdminConfig.Bootstrap(false, "admin", "admin@keystone.com", "changeit"),
                 new UnusableDataAccess(),
                 new UuidIdGenerator(),
-                new SystemDateTimeService());
+                new SystemDateTimeService(),
+                new RoleSeeder(new UuidIdGenerator()));
 
         assertThatCode(runner::bootstrap).doesNotThrowAnyException();
     }

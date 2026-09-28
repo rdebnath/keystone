@@ -832,7 +832,7 @@ as String,
 /// @nodoc
 mixin _$CreateTenantRequest {
 
- String get name; String get slug;
+ String get name; String get slug; String? get country;
 /// Create a copy of CreateTenantRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -846,20 +846,20 @@ $CreateTenantRequestCopyWith<CreateTenantRequest> get copyWith => _$CreateTenant
 @override
 bool operator ==(Object other) {
   final _this = this as CreateTenantRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateTenantRequest&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.slug, _this.slug) || other.slug == _this.slug));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateTenantRequest&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.slug, _this.slug) || other.slug == _this.slug)&&(identical(other.country, _this.country) || other.country == _this.country));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CreateTenantRequest;
-  return Object.hash(runtimeType,_this.name,_this.slug);
+  return Object.hash(runtimeType,_this.name,_this.slug,_this.country);
 }
 
 @override
 String toString() {
   final _this = this as CreateTenantRequest;
-  return 'CreateTenantRequest(name: ${_this.name}, slug: ${_this.slug})';
+  return 'CreateTenantRequest(name: ${_this.name}, slug: ${_this.slug}, country: ${_this.country})';
 }
 
 
@@ -870,7 +870,7 @@ abstract mixin class $CreateTenantRequestCopyWith<$Res>  {
   factory $CreateTenantRequestCopyWith(CreateTenantRequest value, $Res Function(CreateTenantRequest) _then) = _$CreateTenantRequestCopyWithImpl;
 @useResult
 $Res call({
- String name, String slug
+ String name, String slug, String? country
 });
 
 
@@ -887,11 +887,12 @@ class _$CreateTenantRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateTenantRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? slug = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? slug = null,Object? country = freezed,}) {
   return _then(CreateTenantRequest(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
-as String,
+as String,country: freezed == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -976,10 +977,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String slug)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String slug,  String? country)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CreateTenantRequest() when $default != null:
-return $default(_that.name,_that.slug);case _:
+return $default(_that.name,_that.slug,_that.country);case _:
   return orElse();
 
 }
@@ -997,10 +998,10 @@ return $default(_that.name,_that.slug);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String slug)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String slug,  String? country)  $default,) {final _that = this;
 switch (_that) {
 case _CreateTenantRequest():
-return $default(_that.name,_that.slug);case _:
+return $default(_that.name,_that.slug,_that.country);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1017,10 +1018,10 @@ return $default(_that.name,_that.slug);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String slug)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String slug,  String? country)?  $default,) {final _that = this;
 switch (_that) {
 case _CreateTenantRequest() when $default != null:
-return $default(_that.name,_that.slug);case _:
+return $default(_that.name,_that.slug,_that.country);case _:
   return null;
 
 }
@@ -1032,11 +1033,12 @@ return $default(_that.name,_that.slug);case _:
 @JsonSerializable()
 
 class _CreateTenantRequest implements CreateTenantRequest {
-  const _CreateTenantRequest({required this.name, required this.slug});
+  const _CreateTenantRequest({required this.name, required this.slug, this.country});
   factory _CreateTenantRequest.fromJson(Map<String, dynamic> json) => _$CreateTenantRequestFromJson(json);
 
 @override final  String name;
 @override final  String slug;
+@override final  String? country;
 
 /// Create a copy of CreateTenantRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -1051,18 +1053,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateTenantRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.slug, slug) || other.slug == slug));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateTenantRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.country, country) || other.country == country));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,name,slug);
+    return Object.hash(runtimeType,name,slug,country);
 }
 
 @override
 String toString() {
-    return 'CreateTenantRequest(name: $name, slug: $slug)';
+    return 'CreateTenantRequest(name: $name, slug: $slug, country: $country)';
 }
 
 
@@ -1073,7 +1075,7 @@ abstract mixin class _$CreateTenantRequestCopyWith<$Res> implements $CreateTenan
   factory _$CreateTenantRequestCopyWith(_CreateTenantRequest value, $Res Function(_CreateTenantRequest) _then) = __$CreateTenantRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String slug
+ String name, String slug, String? country
 });
 
 
@@ -1090,11 +1092,12 @@ class __$CreateTenantRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateTenantRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? slug = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? slug = null,Object? country = freezed,}) {
   return _then(_CreateTenantRequest(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
-as String,
+as String,country: freezed == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -1105,7 +1108,7 @@ as String,
 /// @nodoc
 mixin _$UpdateTenantRequest {
 
- String get name; String get slug;
+ String get name; String get slug; String? get country;
 /// Create a copy of UpdateTenantRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1119,20 +1122,20 @@ $UpdateTenantRequestCopyWith<UpdateTenantRequest> get copyWith => _$UpdateTenant
 @override
 bool operator ==(Object other) {
   final _this = this as UpdateTenantRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateTenantRequest&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.slug, _this.slug) || other.slug == _this.slug));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateTenantRequest&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.slug, _this.slug) || other.slug == _this.slug)&&(identical(other.country, _this.country) || other.country == _this.country));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as UpdateTenantRequest;
-  return Object.hash(runtimeType,_this.name,_this.slug);
+  return Object.hash(runtimeType,_this.name,_this.slug,_this.country);
 }
 
 @override
 String toString() {
   final _this = this as UpdateTenantRequest;
-  return 'UpdateTenantRequest(name: ${_this.name}, slug: ${_this.slug})';
+  return 'UpdateTenantRequest(name: ${_this.name}, slug: ${_this.slug}, country: ${_this.country})';
 }
 
 
@@ -1143,7 +1146,7 @@ abstract mixin class $UpdateTenantRequestCopyWith<$Res>  {
   factory $UpdateTenantRequestCopyWith(UpdateTenantRequest value, $Res Function(UpdateTenantRequest) _then) = _$UpdateTenantRequestCopyWithImpl;
 @useResult
 $Res call({
- String name, String slug
+ String name, String slug, String? country
 });
 
 
@@ -1160,11 +1163,12 @@ class _$UpdateTenantRequestCopyWithImpl<$Res>
 
 /// Create a copy of UpdateTenantRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? slug = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? slug = null,Object? country = freezed,}) {
   return _then(UpdateTenantRequest(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
-as String,
+as String,country: freezed == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -1249,10 +1253,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String slug)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String slug,  String? country)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UpdateTenantRequest() when $default != null:
-return $default(_that.name,_that.slug);case _:
+return $default(_that.name,_that.slug,_that.country);case _:
   return orElse();
 
 }
@@ -1270,10 +1274,10 @@ return $default(_that.name,_that.slug);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String slug)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String slug,  String? country)  $default,) {final _that = this;
 switch (_that) {
 case _UpdateTenantRequest():
-return $default(_that.name,_that.slug);case _:
+return $default(_that.name,_that.slug,_that.country);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1290,10 +1294,10 @@ return $default(_that.name,_that.slug);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String slug)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String slug,  String? country)?  $default,) {final _that = this;
 switch (_that) {
 case _UpdateTenantRequest() when $default != null:
-return $default(_that.name,_that.slug);case _:
+return $default(_that.name,_that.slug,_that.country);case _:
   return null;
 
 }
@@ -1305,11 +1309,12 @@ return $default(_that.name,_that.slug);case _:
 @JsonSerializable()
 
 class _UpdateTenantRequest implements UpdateTenantRequest {
-  const _UpdateTenantRequest({required this.name, required this.slug});
+  const _UpdateTenantRequest({required this.name, required this.slug, this.country});
   factory _UpdateTenantRequest.fromJson(Map<String, dynamic> json) => _$UpdateTenantRequestFromJson(json);
 
 @override final  String name;
 @override final  String slug;
+@override final  String? country;
 
 /// Create a copy of UpdateTenantRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -1324,18 +1329,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateTenantRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.slug, slug) || other.slug == slug));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateTenantRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.country, country) || other.country == country));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,name,slug);
+    return Object.hash(runtimeType,name,slug,country);
 }
 
 @override
 String toString() {
-    return 'UpdateTenantRequest(name: $name, slug: $slug)';
+    return 'UpdateTenantRequest(name: $name, slug: $slug, country: $country)';
 }
 
 
@@ -1346,7 +1351,7 @@ abstract mixin class _$UpdateTenantRequestCopyWith<$Res> implements $UpdateTenan
   factory _$UpdateTenantRequestCopyWith(_UpdateTenantRequest value, $Res Function(_UpdateTenantRequest) _then) = __$UpdateTenantRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String slug
+ String name, String slug, String? country
 });
 
 
@@ -1363,11 +1368,12 @@ class __$UpdateTenantRequestCopyWithImpl<$Res>
 
 /// Create a copy of UpdateTenantRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? slug = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? slug = null,Object? country = freezed,}) {
   return _then(_UpdateTenantRequest(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
-as String,
+as String,country: freezed == country ? _self.country : country // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -1378,7 +1384,7 @@ as String,
 /// @nodoc
 mixin _$UpdateUserRequest {
 
- String get username; List<String> get roles;
+ String get username; String? get phoneNumber; List<String> get roles;
 /// Create a copy of UpdateUserRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1392,20 +1398,20 @@ $UpdateUserRequestCopyWith<UpdateUserRequest> get copyWith => _$UpdateUserReques
 @override
 bool operator ==(Object other) {
   final _this = this as UpdateUserRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateUserRequest&&(identical(other.username, _this.username) || other.username == _this.username)&&const DeepCollectionEquality().equals(other.roles, _this.roles));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateUserRequest&&(identical(other.username, _this.username) || other.username == _this.username)&&(identical(other.phoneNumber, _this.phoneNumber) || other.phoneNumber == _this.phoneNumber)&&const DeepCollectionEquality().equals(other.roles, _this.roles));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as UpdateUserRequest;
-  return Object.hash(runtimeType,_this.username,const DeepCollectionEquality().hash(_this.roles));
+  return Object.hash(runtimeType,_this.username,_this.phoneNumber,const DeepCollectionEquality().hash(_this.roles));
 }
 
 @override
 String toString() {
   final _this = this as UpdateUserRequest;
-  return 'UpdateUserRequest(username: ${_this.username}, roles: ${_this.roles})';
+  return 'UpdateUserRequest(username: ${_this.username}, phoneNumber: ${_this.phoneNumber}, roles: ${_this.roles})';
 }
 
 
@@ -1416,7 +1422,7 @@ abstract mixin class $UpdateUserRequestCopyWith<$Res>  {
   factory $UpdateUserRequestCopyWith(UpdateUserRequest value, $Res Function(UpdateUserRequest) _then) = _$UpdateUserRequestCopyWithImpl;
 @useResult
 $Res call({
- String username, List<String> roles
+ String username, String? phoneNumber, List<String> roles
 });
 
 
@@ -1433,10 +1439,11 @@ class _$UpdateUserRequestCopyWithImpl<$Res>
 
 /// Create a copy of UpdateUserRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? username = null,Object? roles = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? username = null,Object? phoneNumber = freezed,Object? roles = null,}) {
   return _then(UpdateUserRequest(
 username: null == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
-as String,roles: null == roles ? _self.roles : roles // ignore: cast_nullable_to_non_nullable
+as String,phoneNumber: freezed == phoneNumber ? _self.phoneNumber : phoneNumber // ignore: cast_nullable_to_non_nullable
+as String?,roles: null == roles ? _self.roles : roles // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
 }
@@ -1522,10 +1529,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String username,  List<String> roles)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String username,  String? phoneNumber,  List<String> roles)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UpdateUserRequest() when $default != null:
-return $default(_that.username,_that.roles);case _:
+return $default(_that.username,_that.phoneNumber,_that.roles);case _:
   return orElse();
 
 }
@@ -1543,10 +1550,10 @@ return $default(_that.username,_that.roles);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String username,  List<String> roles)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String username,  String? phoneNumber,  List<String> roles)  $default,) {final _that = this;
 switch (_that) {
 case _UpdateUserRequest():
-return $default(_that.username,_that.roles);case _:
+return $default(_that.username,_that.phoneNumber,_that.roles);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1563,10 +1570,10 @@ return $default(_that.username,_that.roles);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String username,  List<String> roles)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String username,  String? phoneNumber,  List<String> roles)?  $default,) {final _that = this;
 switch (_that) {
 case _UpdateUserRequest() when $default != null:
-return $default(_that.username,_that.roles);case _:
+return $default(_that.username,_that.phoneNumber,_that.roles);case _:
   return null;
 
 }
@@ -1578,10 +1585,11 @@ return $default(_that.username,_that.roles);case _:
 @JsonSerializable()
 
 class _UpdateUserRequest implements UpdateUserRequest {
-  const _UpdateUserRequest({required this.username,  List<String> roles = const <String>[]}): _roles = roles;
+  const _UpdateUserRequest({required this.username, this.phoneNumber,  List<String> roles = const <String>[]}): _roles = roles;
   factory _UpdateUserRequest.fromJson(Map<String, dynamic> json) => _$UpdateUserRequestFromJson(json);
 
 @override final  String username;
+@override final  String? phoneNumber;
  final  List<String> _roles;
 @override@JsonKey() List<String> get roles {
   if (_roles is EqualUnmodifiableListView) return _roles;
@@ -1603,18 +1611,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateUserRequest&&(identical(other.username, username) || other.username == username)&&const DeepCollectionEquality().equals(other.roles, _roles));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateUserRequest&&(identical(other.username, username) || other.username == username)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&const DeepCollectionEquality().equals(other.roles, _roles));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,username,const DeepCollectionEquality().hash(_roles));
+    return Object.hash(runtimeType,username,phoneNumber,const DeepCollectionEquality().hash(_roles));
 }
 
 @override
 String toString() {
-    return 'UpdateUserRequest(username: $username, roles: $roles)';
+    return 'UpdateUserRequest(username: $username, phoneNumber: $phoneNumber, roles: $roles)';
 }
 
 
@@ -1625,7 +1633,7 @@ abstract mixin class _$UpdateUserRequestCopyWith<$Res> implements $UpdateUserReq
   factory _$UpdateUserRequestCopyWith(_UpdateUserRequest value, $Res Function(_UpdateUserRequest) _then) = __$UpdateUserRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String username, List<String> roles
+ String username, String? phoneNumber, List<String> roles
 });
 
 
@@ -1642,10 +1650,11 @@ class __$UpdateUserRequestCopyWithImpl<$Res>
 
 /// Create a copy of UpdateUserRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? username = null,Object? roles = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? username = null,Object? phoneNumber = freezed,Object? roles = null,}) {
   return _then(_UpdateUserRequest(
 username: null == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
-as String,roles: null == roles ? _self._roles : roles // ignore: cast_nullable_to_non_nullable
+as String,phoneNumber: freezed == phoneNumber ? _self.phoneNumber : phoneNumber // ignore: cast_nullable_to_non_nullable
+as String?,roles: null == roles ? _self._roles : roles // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
 }
@@ -1657,7 +1666,7 @@ as List<String>,
 /// @nodoc
 mixin _$CreateRoleRequest {
 
- String get code; String get scope; List<String> get permissions;
+ String get code; String get scope; String? get tenantId; List<String> get permissions;
 /// Create a copy of CreateRoleRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1671,20 +1680,20 @@ $CreateRoleRequestCopyWith<CreateRoleRequest> get copyWith => _$CreateRoleReques
 @override
 bool operator ==(Object other) {
   final _this = this as CreateRoleRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateRoleRequest&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.scope, _this.scope) || other.scope == _this.scope)&&const DeepCollectionEquality().equals(other.permissions, _this.permissions));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateRoleRequest&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.scope, _this.scope) || other.scope == _this.scope)&&(identical(other.tenantId, _this.tenantId) || other.tenantId == _this.tenantId)&&const DeepCollectionEquality().equals(other.permissions, _this.permissions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CreateRoleRequest;
-  return Object.hash(runtimeType,_this.code,_this.scope,const DeepCollectionEquality().hash(_this.permissions));
+  return Object.hash(runtimeType,_this.code,_this.scope,_this.tenantId,const DeepCollectionEquality().hash(_this.permissions));
 }
 
 @override
 String toString() {
   final _this = this as CreateRoleRequest;
-  return 'CreateRoleRequest(code: ${_this.code}, scope: ${_this.scope}, permissions: ${_this.permissions})';
+  return 'CreateRoleRequest(code: ${_this.code}, scope: ${_this.scope}, tenantId: ${_this.tenantId}, permissions: ${_this.permissions})';
 }
 
 
@@ -1695,7 +1704,7 @@ abstract mixin class $CreateRoleRequestCopyWith<$Res>  {
   factory $CreateRoleRequestCopyWith(CreateRoleRequest value, $Res Function(CreateRoleRequest) _then) = _$CreateRoleRequestCopyWithImpl;
 @useResult
 $Res call({
- String code, String scope, List<String> permissions
+ String code, String scope, String? tenantId, List<String> permissions
 });
 
 
@@ -1712,11 +1721,12 @@ class _$CreateRoleRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateRoleRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? scope = null,Object? permissions = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? scope = null,Object? tenantId = freezed,Object? permissions = null,}) {
   return _then(CreateRoleRequest(
 code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
 as String,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
-as String,permissions: null == permissions ? _self.permissions : permissions // ignore: cast_nullable_to_non_nullable
+as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
+as String?,permissions: null == permissions ? _self.permissions : permissions // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
 }
@@ -1802,10 +1812,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String code,  String scope,  List<String> permissions)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String code,  String scope,  String? tenantId,  List<String> permissions)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CreateRoleRequest() when $default != null:
-return $default(_that.code,_that.scope,_that.permissions);case _:
+return $default(_that.code,_that.scope,_that.tenantId,_that.permissions);case _:
   return orElse();
 
 }
@@ -1823,10 +1833,10 @@ return $default(_that.code,_that.scope,_that.permissions);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String code,  String scope,  List<String> permissions)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String code,  String scope,  String? tenantId,  List<String> permissions)  $default,) {final _that = this;
 switch (_that) {
 case _CreateRoleRequest():
-return $default(_that.code,_that.scope,_that.permissions);case _:
+return $default(_that.code,_that.scope,_that.tenantId,_that.permissions);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1843,10 +1853,10 @@ return $default(_that.code,_that.scope,_that.permissions);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String code,  String scope,  List<String> permissions)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String code,  String scope,  String? tenantId,  List<String> permissions)?  $default,) {final _that = this;
 switch (_that) {
 case _CreateRoleRequest() when $default != null:
-return $default(_that.code,_that.scope,_that.permissions);case _:
+return $default(_that.code,_that.scope,_that.tenantId,_that.permissions);case _:
   return null;
 
 }
@@ -1858,11 +1868,12 @@ return $default(_that.code,_that.scope,_that.permissions);case _:
 @JsonSerializable()
 
 class _CreateRoleRequest implements CreateRoleRequest {
-  const _CreateRoleRequest({required this.code, required this.scope,  List<String> permissions = const <String>[]}): _permissions = permissions;
+  const _CreateRoleRequest({required this.code, required this.scope, this.tenantId,  List<String> permissions = const <String>[]}): _permissions = permissions;
   factory _CreateRoleRequest.fromJson(Map<String, dynamic> json) => _$CreateRoleRequestFromJson(json);
 
 @override final  String code;
 @override final  String scope;
+@override final  String? tenantId;
  final  List<String> _permissions;
 @override@JsonKey() List<String> get permissions {
   if (_permissions is EqualUnmodifiableListView) return _permissions;
@@ -1884,18 +1895,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateRoleRequest&&(identical(other.code, code) || other.code == code)&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other.permissions, _permissions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateRoleRequest&&(identical(other.code, code) || other.code == code)&&(identical(other.scope, scope) || other.scope == scope)&&(identical(other.tenantId, tenantId) || other.tenantId == tenantId)&&const DeepCollectionEquality().equals(other.permissions, _permissions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,code,scope,const DeepCollectionEquality().hash(_permissions));
+    return Object.hash(runtimeType,code,scope,tenantId,const DeepCollectionEquality().hash(_permissions));
 }
 
 @override
 String toString() {
-    return 'CreateRoleRequest(code: $code, scope: $scope, permissions: $permissions)';
+    return 'CreateRoleRequest(code: $code, scope: $scope, tenantId: $tenantId, permissions: $permissions)';
 }
 
 
@@ -1906,7 +1917,7 @@ abstract mixin class _$CreateRoleRequestCopyWith<$Res> implements $CreateRoleReq
   factory _$CreateRoleRequestCopyWith(_CreateRoleRequest value, $Res Function(_CreateRoleRequest) _then) = __$CreateRoleRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String code, String scope, List<String> permissions
+ String code, String scope, String? tenantId, List<String> permissions
 });
 
 
@@ -1923,8 +1934,291 @@ class __$CreateRoleRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateRoleRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? scope = null,Object? permissions = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? scope = null,Object? tenantId = freezed,Object? permissions = null,}) {
   return _then(_CreateRoleRequest(
+code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
+as String,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
+as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
+as String?,permissions: null == permissions ? _self._permissions : permissions // ignore: cast_nullable_to_non_nullable
+as List<String>,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$UpdateRoleRequest {
+
+ String get code; String get scope; List<String> get permissions;
+/// Create a copy of UpdateRoleRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$UpdateRoleRequestCopyWith<UpdateRoleRequest> get copyWith => _$UpdateRoleRequestCopyWithImpl<UpdateRoleRequest>(this as UpdateRoleRequest, _$identity);
+
+  /// Serializes this UpdateRoleRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as UpdateRoleRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateRoleRequest&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.scope, _this.scope) || other.scope == _this.scope)&&const DeepCollectionEquality().equals(other.permissions, _this.permissions));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as UpdateRoleRequest;
+  return Object.hash(runtimeType,_this.code,_this.scope,const DeepCollectionEquality().hash(_this.permissions));
+}
+
+@override
+String toString() {
+  final _this = this as UpdateRoleRequest;
+  return 'UpdateRoleRequest(code: ${_this.code}, scope: ${_this.scope}, permissions: ${_this.permissions})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $UpdateRoleRequestCopyWith<$Res>  {
+  factory $UpdateRoleRequestCopyWith(UpdateRoleRequest value, $Res Function(UpdateRoleRequest) _then) = _$UpdateRoleRequestCopyWithImpl;
+@useResult
+$Res call({
+ String code, String scope, List<String> permissions
+});
+
+
+
+
+}
+/// @nodoc
+class _$UpdateRoleRequestCopyWithImpl<$Res>
+    implements $UpdateRoleRequestCopyWith<$Res> {
+  _$UpdateRoleRequestCopyWithImpl(this._self, this._then);
+
+  final UpdateRoleRequest _self;
+  final $Res Function(UpdateRoleRequest) _then;
+
+/// Create a copy of UpdateRoleRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? scope = null,Object? permissions = null,}) {
+  return _then(UpdateRoleRequest(
+code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
+as String,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
+as String,permissions: null == permissions ? _self.permissions : permissions // ignore: cast_nullable_to_non_nullable
+as List<String>,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [UpdateRoleRequest].
+extension UpdateRoleRequestPatterns on UpdateRoleRequest {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _UpdateRoleRequest value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _UpdateRoleRequest() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _UpdateRoleRequest value)  $default,){
+final _that = this;
+switch (_that) {
+case _UpdateRoleRequest():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _UpdateRoleRequest value)?  $default,){
+final _that = this;
+switch (_that) {
+case _UpdateRoleRequest() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String code,  String scope,  List<String> permissions)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _UpdateRoleRequest() when $default != null:
+return $default(_that.code,_that.scope,_that.permissions);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String code,  String scope,  List<String> permissions)  $default,) {final _that = this;
+switch (_that) {
+case _UpdateRoleRequest():
+return $default(_that.code,_that.scope,_that.permissions);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String code,  String scope,  List<String> permissions)?  $default,) {final _that = this;
+switch (_that) {
+case _UpdateRoleRequest() when $default != null:
+return $default(_that.code,_that.scope,_that.permissions);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _UpdateRoleRequest implements UpdateRoleRequest {
+  const _UpdateRoleRequest({required this.code, required this.scope,  List<String> permissions = const <String>[]}): _permissions = permissions;
+  factory _UpdateRoleRequest.fromJson(Map<String, dynamic> json) => _$UpdateRoleRequestFromJson(json);
+
+@override final  String code;
+@override final  String scope;
+ final  List<String> _permissions;
+@override@JsonKey() List<String> get permissions {
+  if (_permissions is EqualUnmodifiableListView) return _permissions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_permissions);
+}
+
+
+/// Create a copy of UpdateRoleRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$UpdateRoleRequestCopyWith<_UpdateRoleRequest> get copyWith => __$UpdateRoleRequestCopyWithImpl<_UpdateRoleRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$UpdateRoleRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateRoleRequest&&(identical(other.code, code) || other.code == code)&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other.permissions, _permissions));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,code,scope,const DeepCollectionEquality().hash(_permissions));
+}
+
+@override
+String toString() {
+    return 'UpdateRoleRequest(code: $code, scope: $scope, permissions: $permissions)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$UpdateRoleRequestCopyWith<$Res> implements $UpdateRoleRequestCopyWith<$Res> {
+  factory _$UpdateRoleRequestCopyWith(_UpdateRoleRequest value, $Res Function(_UpdateRoleRequest) _then) = __$UpdateRoleRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String code, String scope, List<String> permissions
+});
+
+
+
+
+}
+/// @nodoc
+class __$UpdateRoleRequestCopyWithImpl<$Res>
+    implements _$UpdateRoleRequestCopyWith<$Res> {
+  __$UpdateRoleRequestCopyWithImpl(this._self, this._then);
+
+  final _UpdateRoleRequest _self;
+  final $Res Function(_UpdateRoleRequest) _then;
+
+/// Create a copy of UpdateRoleRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? scope = null,Object? permissions = null,}) {
+  return _then(_UpdateRoleRequest(
 code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
 as String,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
 as String,permissions: null == permissions ? _self._permissions : permissions // ignore: cast_nullable_to_non_nullable
@@ -1939,7 +2233,7 @@ as List<String>,
 /// @nodoc
 mixin _$CreatePermissionRequest {
 
- String get code; String get scope;
+ String get code; String get scope; String? get tenantId;
 /// Create a copy of CreatePermissionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1953,20 +2247,20 @@ $CreatePermissionRequestCopyWith<CreatePermissionRequest> get copyWith => _$Crea
 @override
 bool operator ==(Object other) {
   final _this = this as CreatePermissionRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreatePermissionRequest&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.scope, _this.scope) || other.scope == _this.scope));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreatePermissionRequest&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.scope, _this.scope) || other.scope == _this.scope)&&(identical(other.tenantId, _this.tenantId) || other.tenantId == _this.tenantId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CreatePermissionRequest;
-  return Object.hash(runtimeType,_this.code,_this.scope);
+  return Object.hash(runtimeType,_this.code,_this.scope,_this.tenantId);
 }
 
 @override
 String toString() {
   final _this = this as CreatePermissionRequest;
-  return 'CreatePermissionRequest(code: ${_this.code}, scope: ${_this.scope})';
+  return 'CreatePermissionRequest(code: ${_this.code}, scope: ${_this.scope}, tenantId: ${_this.tenantId})';
 }
 
 
@@ -1977,7 +2271,7 @@ abstract mixin class $CreatePermissionRequestCopyWith<$Res>  {
   factory $CreatePermissionRequestCopyWith(CreatePermissionRequest value, $Res Function(CreatePermissionRequest) _then) = _$CreatePermissionRequestCopyWithImpl;
 @useResult
 $Res call({
- String code, String scope
+ String code, String scope, String? tenantId
 });
 
 
@@ -1994,11 +2288,12 @@ class _$CreatePermissionRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreatePermissionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? scope = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? scope = null,Object? tenantId = freezed,}) {
   return _then(CreatePermissionRequest(
 code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
 as String,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
-as String,
+as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -2083,10 +2378,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String code,  String scope)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String code,  String scope,  String? tenantId)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CreatePermissionRequest() when $default != null:
-return $default(_that.code,_that.scope);case _:
+return $default(_that.code,_that.scope,_that.tenantId);case _:
   return orElse();
 
 }
@@ -2104,10 +2399,10 @@ return $default(_that.code,_that.scope);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String code,  String scope)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String code,  String scope,  String? tenantId)  $default,) {final _that = this;
 switch (_that) {
 case _CreatePermissionRequest():
-return $default(_that.code,_that.scope);case _:
+return $default(_that.code,_that.scope,_that.tenantId);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -2124,10 +2419,10 @@ return $default(_that.code,_that.scope);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String code,  String scope)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String code,  String scope,  String? tenantId)?  $default,) {final _that = this;
 switch (_that) {
 case _CreatePermissionRequest() when $default != null:
-return $default(_that.code,_that.scope);case _:
+return $default(_that.code,_that.scope,_that.tenantId);case _:
   return null;
 
 }
@@ -2139,11 +2434,12 @@ return $default(_that.code,_that.scope);case _:
 @JsonSerializable()
 
 class _CreatePermissionRequest implements CreatePermissionRequest {
-  const _CreatePermissionRequest({required this.code, required this.scope});
+  const _CreatePermissionRequest({required this.code, required this.scope, this.tenantId});
   factory _CreatePermissionRequest.fromJson(Map<String, dynamic> json) => _$CreatePermissionRequestFromJson(json);
 
 @override final  String code;
 @override final  String scope;
+@override final  String? tenantId;
 
 /// Create a copy of CreatePermissionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -2158,18 +2454,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreatePermissionRequest&&(identical(other.code, code) || other.code == code)&&(identical(other.scope, scope) || other.scope == scope));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreatePermissionRequest&&(identical(other.code, code) || other.code == code)&&(identical(other.scope, scope) || other.scope == scope)&&(identical(other.tenantId, tenantId) || other.tenantId == tenantId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,code,scope);
+    return Object.hash(runtimeType,code,scope,tenantId);
 }
 
 @override
 String toString() {
-    return 'CreatePermissionRequest(code: $code, scope: $scope)';
+    return 'CreatePermissionRequest(code: $code, scope: $scope, tenantId: $tenantId)';
 }
 
 
@@ -2180,7 +2476,7 @@ abstract mixin class _$CreatePermissionRequestCopyWith<$Res> implements $CreateP
   factory _$CreatePermissionRequestCopyWith(_CreatePermissionRequest value, $Res Function(_CreatePermissionRequest) _then) = __$CreatePermissionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String code, String scope
+ String code, String scope, String? tenantId
 });
 
 
@@ -2197,11 +2493,12 @@ class __$CreatePermissionRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreatePermissionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? scope = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? scope = null,Object? tenantId = freezed,}) {
   return _then(_CreatePermissionRequest(
 code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
 as String,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
-as String,
+as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -2212,7 +2509,7 @@ as String,
 /// @nodoc
 mixin _$CreateUserRequest {
 
- String get username; String? get tenantId; String? get email; String get temporaryPassword; List<String> get roles;
+ String get username; String? get tenantId; String? get email; String? get phoneNumber; String get temporaryPassword; List<String> get roles;
 /// Create a copy of CreateUserRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2226,20 +2523,20 @@ $CreateUserRequestCopyWith<CreateUserRequest> get copyWith => _$CreateUserReques
 @override
 bool operator ==(Object other) {
   final _this = this as CreateUserRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateUserRequest&&(identical(other.username, _this.username) || other.username == _this.username)&&(identical(other.tenantId, _this.tenantId) || other.tenantId == _this.tenantId)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.temporaryPassword, _this.temporaryPassword) || other.temporaryPassword == _this.temporaryPassword)&&const DeepCollectionEquality().equals(other.roles, _this.roles));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateUserRequest&&(identical(other.username, _this.username) || other.username == _this.username)&&(identical(other.tenantId, _this.tenantId) || other.tenantId == _this.tenantId)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.phoneNumber, _this.phoneNumber) || other.phoneNumber == _this.phoneNumber)&&(identical(other.temporaryPassword, _this.temporaryPassword) || other.temporaryPassword == _this.temporaryPassword)&&const DeepCollectionEquality().equals(other.roles, _this.roles));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CreateUserRequest;
-  return Object.hash(runtimeType,_this.username,_this.tenantId,_this.email,_this.temporaryPassword,const DeepCollectionEquality().hash(_this.roles));
+  return Object.hash(runtimeType,_this.username,_this.tenantId,_this.email,_this.phoneNumber,_this.temporaryPassword,const DeepCollectionEquality().hash(_this.roles));
 }
 
 @override
 String toString() {
   final _this = this as CreateUserRequest;
-  return 'CreateUserRequest(username: ${_this.username}, tenantId: ${_this.tenantId}, email: ${_this.email}, temporaryPassword: ${_this.temporaryPassword}, roles: ${_this.roles})';
+  return 'CreateUserRequest(username: ${_this.username}, tenantId: ${_this.tenantId}, email: ${_this.email}, phoneNumber: ${_this.phoneNumber}, temporaryPassword: ${_this.temporaryPassword}, roles: ${_this.roles})';
 }
 
 
@@ -2250,7 +2547,7 @@ abstract mixin class $CreateUserRequestCopyWith<$Res>  {
   factory $CreateUserRequestCopyWith(CreateUserRequest value, $Res Function(CreateUserRequest) _then) = _$CreateUserRequestCopyWithImpl;
 @useResult
 $Res call({
- String username, String? tenantId, String? email, String temporaryPassword, List<String> roles
+ String username, String? tenantId, String? email, String? phoneNumber, String temporaryPassword, List<String> roles
 });
 
 
@@ -2267,11 +2564,12 @@ class _$CreateUserRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateUserRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? username = null,Object? tenantId = freezed,Object? email = freezed,Object? temporaryPassword = null,Object? roles = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? username = null,Object? tenantId = freezed,Object? email = freezed,Object? phoneNumber = freezed,Object? temporaryPassword = null,Object? roles = null,}) {
   return _then(CreateUserRequest(
 username: null == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
 as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
 as String?,email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
+as String?,phoneNumber: freezed == phoneNumber ? _self.phoneNumber : phoneNumber // ignore: cast_nullable_to_non_nullable
 as String?,temporaryPassword: null == temporaryPassword ? _self.temporaryPassword : temporaryPassword // ignore: cast_nullable_to_non_nullable
 as String,roles: null == roles ? _self.roles : roles // ignore: cast_nullable_to_non_nullable
 as List<String>,
@@ -2359,10 +2657,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String username,  String? tenantId,  String? email,  String temporaryPassword,  List<String> roles)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String username,  String? tenantId,  String? email,  String? phoneNumber,  String temporaryPassword,  List<String> roles)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CreateUserRequest() when $default != null:
-return $default(_that.username,_that.tenantId,_that.email,_that.temporaryPassword,_that.roles);case _:
+return $default(_that.username,_that.tenantId,_that.email,_that.phoneNumber,_that.temporaryPassword,_that.roles);case _:
   return orElse();
 
 }
@@ -2380,10 +2678,10 @@ return $default(_that.username,_that.tenantId,_that.email,_that.temporaryPasswor
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String username,  String? tenantId,  String? email,  String temporaryPassword,  List<String> roles)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String username,  String? tenantId,  String? email,  String? phoneNumber,  String temporaryPassword,  List<String> roles)  $default,) {final _that = this;
 switch (_that) {
 case _CreateUserRequest():
-return $default(_that.username,_that.tenantId,_that.email,_that.temporaryPassword,_that.roles);case _:
+return $default(_that.username,_that.tenantId,_that.email,_that.phoneNumber,_that.temporaryPassword,_that.roles);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -2400,10 +2698,10 @@ return $default(_that.username,_that.tenantId,_that.email,_that.temporaryPasswor
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String username,  String? tenantId,  String? email,  String temporaryPassword,  List<String> roles)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String username,  String? tenantId,  String? email,  String? phoneNumber,  String temporaryPassword,  List<String> roles)?  $default,) {final _that = this;
 switch (_that) {
 case _CreateUserRequest() when $default != null:
-return $default(_that.username,_that.tenantId,_that.email,_that.temporaryPassword,_that.roles);case _:
+return $default(_that.username,_that.tenantId,_that.email,_that.phoneNumber,_that.temporaryPassword,_that.roles);case _:
   return null;
 
 }
@@ -2415,12 +2713,13 @@ return $default(_that.username,_that.tenantId,_that.email,_that.temporaryPasswor
 @JsonSerializable()
 
 class _CreateUserRequest implements CreateUserRequest {
-  const _CreateUserRequest({required this.username, this.tenantId, this.email, required this.temporaryPassword,  List<String> roles = const <String>[]}): _roles = roles;
+  const _CreateUserRequest({required this.username, this.tenantId, this.email, this.phoneNumber, required this.temporaryPassword,  List<String> roles = const <String>[]}): _roles = roles;
   factory _CreateUserRequest.fromJson(Map<String, dynamic> json) => _$CreateUserRequestFromJson(json);
 
 @override final  String username;
 @override final  String? tenantId;
 @override final  String? email;
+@override final  String? phoneNumber;
 @override final  String temporaryPassword;
  final  List<String> _roles;
 @override@JsonKey() List<String> get roles {
@@ -2443,18 +2742,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateUserRequest&&(identical(other.username, username) || other.username == username)&&(identical(other.tenantId, tenantId) || other.tenantId == tenantId)&&(identical(other.email, email) || other.email == email)&&(identical(other.temporaryPassword, temporaryPassword) || other.temporaryPassword == temporaryPassword)&&const DeepCollectionEquality().equals(other.roles, _roles));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateUserRequest&&(identical(other.username, username) || other.username == username)&&(identical(other.tenantId, tenantId) || other.tenantId == tenantId)&&(identical(other.email, email) || other.email == email)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&(identical(other.temporaryPassword, temporaryPassword) || other.temporaryPassword == temporaryPassword)&&const DeepCollectionEquality().equals(other.roles, _roles));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,username,tenantId,email,temporaryPassword,const DeepCollectionEquality().hash(_roles));
+    return Object.hash(runtimeType,username,tenantId,email,phoneNumber,temporaryPassword,const DeepCollectionEquality().hash(_roles));
 }
 
 @override
 String toString() {
-    return 'CreateUserRequest(username: $username, tenantId: $tenantId, email: $email, temporaryPassword: $temporaryPassword, roles: $roles)';
+    return 'CreateUserRequest(username: $username, tenantId: $tenantId, email: $email, phoneNumber: $phoneNumber, temporaryPassword: $temporaryPassword, roles: $roles)';
 }
 
 
@@ -2465,7 +2764,7 @@ abstract mixin class _$CreateUserRequestCopyWith<$Res> implements $CreateUserReq
   factory _$CreateUserRequestCopyWith(_CreateUserRequest value, $Res Function(_CreateUserRequest) _then) = __$CreateUserRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String username, String? tenantId, String? email, String temporaryPassword, List<String> roles
+ String username, String? tenantId, String? email, String? phoneNumber, String temporaryPassword, List<String> roles
 });
 
 
@@ -2482,11 +2781,12 @@ class __$CreateUserRequestCopyWithImpl<$Res>
 
 /// Create a copy of CreateUserRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? username = null,Object? tenantId = freezed,Object? email = freezed,Object? temporaryPassword = null,Object? roles = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? username = null,Object? tenantId = freezed,Object? email = freezed,Object? phoneNumber = freezed,Object? temporaryPassword = null,Object? roles = null,}) {
   return _then(_CreateUserRequest(
 username: null == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
 as String,tenantId: freezed == tenantId ? _self.tenantId : tenantId // ignore: cast_nullable_to_non_nullable
 as String?,email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
+as String?,phoneNumber: freezed == phoneNumber ? _self.phoneNumber : phoneNumber // ignore: cast_nullable_to_non_nullable
 as String?,temporaryPassword: null == temporaryPassword ? _self.temporaryPassword : temporaryPassword // ignore: cast_nullable_to_non_nullable
 as String,roles: null == roles ? _self._roles : roles // ignore: cast_nullable_to_non_nullable
 as List<String>,

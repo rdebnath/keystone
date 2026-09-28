@@ -20,6 +20,9 @@ bootstrap:
   enabled: true                 # seed the permission catalog + platform-admin role + first admin user at
                                 # startup; set false (or BOOTSTRAP_ON_START=false) to skip it, e.g. when the
                                 # schema/roles are provisioned out of band (admin credentials then optional)
-  adminUsername: "admin"        # login local-part of the first platform admin (admin@keystone)
-  adminEmail: "admin@keystone.com"  # virtual/fake Supabase email; never delivered
-  adminPassword: "changeit"     # well-known initial password; override via BOOTSTRAP_ADMIN_PASSWORD
+  adminUsername: ""             # required per environment when enabled — the first platform admin's login
+                                # local-part, e.g. "admin" (set in admin-config/application-{env}.yaml)
+  adminEmail: ""                # required per environment when enabled — the admin's virtual/fake Supabase
+                                # email; never delivered, so it need not be a real mailbox
+  adminPassword: "changeit"     # well-known initial password for local development; a real deployment
+                                # overrides it via BOOTSTRAP_ADMIN_PASSWORD (or yaml)

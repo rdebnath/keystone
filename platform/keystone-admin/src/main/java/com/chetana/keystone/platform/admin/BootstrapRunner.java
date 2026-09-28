@@ -7,6 +7,7 @@ import com.chetana.keystone.common.time.DateTimeService;
 import com.chetana.keystone.data.DataAccess;
 import com.chetana.keystone.platform.admin.config.AdminConfig;
 import com.chetana.keystone.platform.admin.data.Platform;
+import com.chetana.keystone.platform.admin.role.RoleSeeder;
 import com.chetana.keystone.platform.admin.supabase.SupabaseAdminClient;
 import org.jooq.DSLContext;
 import org.slf4j.Logger;
@@ -14,13 +15,11 @@ import org.slf4j.LoggerFactory;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 
-import static com.chetana.keystone.platform.admin.PermissionCatalog.PLATFORM_ADMIN_ROLE;
-import static com.chetana.keystone.platform.admin.PermissionCatalog.WILDCARD;
 import static com.chetana.keystone.platform.admin.jooq.platform.Tables.PERMISSIONS;
-import static com.chetana.keystone.platform.admin.jooq.platform.Tables.ROLE_PERMISSIONS;
-import static com.chetana.keystone.platform.admin.jooq.platform.Tables.ROLES;
+import static com.chetana.keystone.platform.admin.jooq.platform.Tables.TENANTS;
 import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USER_ROLES;
 import static com.chetana.keystone.platform.admin.jooq.platform.Tables.USERS;
 
@@ -43,6 +42,7 @@ public final class BootstrapRunner {
     private final DataAccess data;
     private final IdGenerator idGenerator;
     private final DateTimeService dateTimeService;
+    private final RoleSeeder roleSeeder;
 
     @Inject
     public BootstrapRunner(
@@ -50,12 +50,14 @@ public final class BootstrapRunner {
             AdminConfig.Bootstrap bootstrap,
             @Platform DataAccess data,
             IdGenerator idGenerator,
-            DateTimeService dateTimeService) {
+            DateTimeService dateTimeService,
+            RoleSeeder roleSeeder) {
         this.supabaseAdmin = supabaseAdmin;
         this.bootstrap = bootstrap;
         this.data = data;
         this.idGenerator = idGenerator;
         this.dateTimeService = dateTimeService;
+        this.roleSeeder = roleSeeder;
     }
 
     public void bootstrap() {
@@ -68,9 +70,10 @@ public final class BootstrapRunner {
         UUID userId = data.transactionResult(tx -> {
             OffsetDateTime now = now();
             seedPermissions(tx, now);
-            UUID roleId = seedPlatformAdminRole(tx, now);
+            UUID roleId = roleSeeder.ensurePlatformAdminRole(tx, now);
             UUID id = upsertAdminUser(tx, sub, now);
             grantRole(tx, id, roleId);
+            ensureTenantAdminRoles(tx, now);
             return id;
         });
         log.info("Bootstrapped platform admin user {} (sub {})", userId, sub);
@@ -103,24 +106,16 @@ public final class BootstrapRunner {
         }
     }
 
-    private UUID seedPlatformAdminRole(DSLContext tx, OffsetDateTime now) {
-        UUID existing = tx.select(ROLES.ID).from(ROLES).where(ROLES.CODE.eq(PLATFORM_ADMIN_ROLE)).fetchOne(ROLES.ID);
-        if (existing != null) {
-            return existing;
+    /**
+     * Re-assures every existing tenant of its own admin role. A tenant's role belongs to its lifecycle, but
+     * one created before the role existed — or while the bootstrap was switched off — would otherwise never
+     * get one; {@code ensure} adds only what is missing.
+     */
+    private void ensureTenantAdminRoles(DSLContext tx, OffsetDateTime now) {
+        List<UUID> tenantIds = tx.select(TENANTS.ID).from(TENANTS).fetch(TENANTS.ID);
+        for (UUID tenantId : tenantIds) {
+            roleSeeder.ensureTenantAdminRole(tx, tenantId, now);
         }
-        UUID roleId = idGenerator.nextId();
-        tx.insertInto(ROLES, ROLES.ID, ROLES.CODE, ROLES.SCOPE, ROLES.CREATED_AT, ROLES.UPDATED_AT)
-                .values(roleId, PLATFORM_ADMIN_ROLE, "PLATFORM", now, now)
-                .execute();
-        UUID wildcardId = tx.select(PERMISSIONS.ID).from(PERMISSIONS).where(PERMISSIONS.CODE.eq(WILDCARD)).fetchOne(PERMISSIONS.ID);
-        if (wildcardId == null) {
-            throw new IllegalStateException("Missing wildcard permission: " + WILDCARD);
-        }
-        tx.insertInto(ROLE_PERMISSIONS, ROLE_PERMISSIONS.ROLE_ID, ROLE_PERMISSIONS.PERMISSION_ID)
-                .values(roleId, wildcardId)
-                .onConflictDoNothing()
-                .execute();
-        return roleId;
     }
 
     private UUID upsertAdminUser(DSLContext tx, String sub, OffsetDateTime now) {

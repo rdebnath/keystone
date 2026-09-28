@@ -70,8 +70,34 @@ final _alice = User(
   sub: 'sub-1',
   username: 'alice',
   email: 'alice@acme.com',
+  phoneNumber: '+919876543210',
   tenantId: 'tenant-1',
   roles: const ['tenant-viewer'],
+);
+
+/// The picker sets and pages the screens read, in the shapes the backend returns
+/// (`docs/CODING_GUIDELINES_BACKEND.md` §8). A picker input is **not** a page: it must carry every choice.
+final _tenantOptions = OptionList<Tenant>(items: _tenants, truncated: false);
+final _roleOptions = OptionList<Role>(items: _roles, truncated: false);
+final _emptyUsers = Paged<User>(
+  items: const <User>[],
+  page: 0,
+  size: 25,
+  totalElements: 0,
+  totalPages: 0,
+  hasNext: false,
+  hasPrevious: false,
+);
+
+/// One page holding [items], as a list read returns it.
+Paged<T> _pageOf<T>(List<T> items) => Paged<T>(
+  items: items,
+  page: 0,
+  size: 25,
+  totalElements: items.length,
+  totalPages: items.isEmpty ? 0 : 1,
+  hasNext: false,
+  hasPrevious: false,
 );
 
 Future<_RecordingAdapter> _pumpEditor(
@@ -91,9 +117,9 @@ Future<_RecordingAdapter> _pumpEditor(
     ProviderScope(
       overrides: [
         apiClientProvider.overrideWithValue(ApiClient(dio)),
-        tenantsProvider.overrideWith((ref) async => _tenants),
-        rolesProvider.overrideWith((ref) async => _roles),
-        usersProvider.overrideWith((ref, tenantId) async => <User>[]),
+        tenantOptionsProvider.overrideWith((ref) async => _tenantOptions),
+        roleOptionsProvider.overrideWith((ref, tenantId) async => _roleOptions),
+        usersPageProvider.overrideWith((ref, query) async => _emptyUsers),
       ],
       child: MaterialApp(
         home: Scaffold(
@@ -132,11 +158,17 @@ Future<_RecordingAdapter> _pumpUserList(
     ProviderScope(
       overrides: [
         apiClientProvider.overrideWithValue(ApiClient(dio)),
-        tenantsProvider.overrideWith((ref) async => _tenants),
-        usersProvider.overrideWith((ref, tenantId) async => [_alice]),
+        tenantOptionsProvider.overrideWith((ref) async => _tenantOptions),
+        usersPageProvider.overrideWith((ref, query) async => _pageOf([_alice])),
       ],
       child: MaterialApp(
-        home: Scaffold(body: UserList(tenantId: null, canManage: canManage)),
+        home: Scaffold(
+          body: UserList(
+            query: const ListQuery(),
+            onQueryChanged: (_) {},
+            canManage: canManage,
+          ),
+        ),
       ),
     ),
   );
@@ -177,6 +209,8 @@ void main() {
       expect(request.uri.path, '/inventory/api/v1/users/user-1');
       expect(request.data, {
         'username': 'alice-b',
+        // The stored number is part of the form and travels back unchanged.
+        'phoneNumber': '+919876543210',
         'roles': ['tenant-editor', 'tenant-viewer'],
       });
     });
@@ -193,7 +227,8 @@ void main() {
       expect(find.text('tenant-viewer'), findsNothing);
 
       await tester.enterText(find.byType(TextFormField).at(0), 'bob');
-      await tester.enterText(find.byType(TextFormField).at(2), 'temporary');
+      // 0 username, 1 email, 2 phone number, 3 temporary password.
+      await tester.enterText(find.byType(TextFormField).at(3), 'temporary');
       await tester.tap(find.text('Create'));
       await tester.pumpAndSettle();
 
@@ -202,9 +237,71 @@ void main() {
         'username': 'bob',
         'tenantId': null,
         'email': null,
+        'phoneNumber': null,
         'temporaryPassword': 'temporary',
         'roles': <String>[],
       });
+    });
+
+    testWidgets('should_send_the_phone_number_it_recorded', (tester) async {
+      final adapter = await _pumpEditor(tester, tenant: _tenants.last);
+
+      await tester.enterText(find.byType(TextFormField).at(0), 'bob');
+      // The separators a human types are the backend's to normalize; the form sends what was entered.
+      await tester.enterText(
+        find.byType(TextFormField).at(2),
+        '+91 98765 43210',
+      );
+      await tester.enterText(find.byType(TextFormField).at(3), 'temporary');
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      expect(adapter.requests.single.data, {
+        'username': 'bob',
+        'tenantId': 'tenant-1',
+        'email': null,
+        'phoneNumber': '+91 98765 43210',
+        'temporaryPassword': 'temporary',
+        'roles': <String>[],
+      });
+    });
+
+    testWidgets('should_send_the_phone_number_it_edited', (tester) async {
+      final adapter = await _pumpEditor(tester, existing: _alice);
+
+      await tester.enterText(find.byType(TextFormField).at(1), '+14155552671');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(adapter.requests.single.data, {
+        'username': 'alice',
+        'phoneNumber': '+14155552671',
+        'roles': ['tenant-viewer'],
+      });
+    });
+
+    testWidgets('should_refuse_a_number_without_the_country_code_prefix', (
+      tester,
+    ) async {
+      final adapter = await _pumpEditor(tester, existing: _alice);
+
+      await tester.enterText(find.byType(TextFormField).at(1), '9876543210');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // The rejected value stays in the open dialog and nothing is sent (the backend never sees it).
+      expect(find.text('Start with + and the country code'), findsOneWidget);
+      expect(adapter.requests, isEmpty);
+    });
+  });
+
+  group('User row', () {
+    testWidgets('should_show_the_phone_number_when_one_is_recorded', (
+      tester,
+    ) async {
+      await _pumpUserList(tester);
+
+      expect(find.textContaining('+919876543210'), findsOneWidget);
     });
   });
 

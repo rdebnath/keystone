@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Optional ownership on roles and permissions: tenant_id NULL = the global (platform-defined)
+         catalog, visible to the platform plane and every tenant; a tenant id = owned by that tenant.
+         `scope` stays orthogonal and says what a row is ABOUT (PLATFORM = cross-tenant, TENANT =
+         within one customer); a tenant-owned row must be TENANT scope. -->
+
+    <changeSet id="0003-tenant-scoped-rbac-columns" author="keystone">
+        <!-- Guarded on the tables existing as well as on the column being absent. 0001's precondition marks
+             the whole changeset ran when `tenants` already exists (an externally-initialized schema), so a
+             changeset that only checked "column absent" would try to alter a `roles` table that was never
+             created — which is exactly what an app-level SchemaTool test simulates. Skipping with 0001 keeps
+             this consistent. -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="roles"/>
+                <tableExists tableName="permissions"/>
+                <not>
+                    <columnExists tableName="roles" columnName="tenant_id"/>
+                </not>
+            </and>
+        </preConditions>
+        <addColumn tableName="roles">
+            <column name="tenant_id" type="UUID">
+                <constraints nullable="true" foreignKeyName="fk_roles_tenant" references="tenants(id)"/>
+            </column>
+        </addColumn>
+        <addColumn tableName="permissions">
+            <column name="tenant_id" type="UUID">
+                <constraints nullable="true" foreignKeyName="fk_permissions_tenant" references="tenants(id)"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="0003-tenant-scoped-rbac-uniqueness" author="keystone">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="roles"/>
+                <tableExists tableName="permissions"/>
+                <not>
+                    <indexExists indexName="uq_roles_code_global"/>
+                </not>
+            </and>
+        </preConditions>
+        <!-- `code` was globally unique (0001's inline `unique="true"`, which PostgreSQL names
+             "<table>_<column>_key"). It becomes unique PER OWNER: a plain UNIQUE (code, tenant_id)
+             plus a partial unique index for the global partition, because a unique index treats NULLs
+             as distinct — without the partial index two global roles could share a code. -->
+        <sql>
+            ALTER TABLE ${database.defaultSchemaName}.roles DROP CONSTRAINT IF EXISTS roles_code_key;
+            ALTER TABLE ${database.defaultSchemaName}.permissions DROP CONSTRAINT IF EXISTS permissions_code_key;
+
+            ALTER TABLE ${database.defaultSchemaName}.roles
+                ADD CONSTRAINT uq_roles_code_tenant UNIQUE (code, tenant_id);
+            ALTER TABLE ${database.defaultSchemaName}.permissions
+                ADD CONSTRAINT uq_permissions_code_tenant UNIQUE (code, tenant_id);
+
+            CREATE UNIQUE INDEX uq_roles_code_global
+                ON ${database.defaultSchemaName}.roles (code) WHERE tenant_id IS NULL;
+            CREATE UNIQUE INDEX uq_permissions_code_global
+                ON ${database.defaultSchemaName}.permissions (code) WHERE tenant_id IS NULL;
+        </sql>
+        <!-- No tenant may own a cross-tenant capability. -->
+        <sql>
+            ALTER TABLE ${database.defaultSchemaName}.roles
+                ADD CONSTRAINT chk_roles_tenant_scope CHECK (tenant_id IS NULL OR scope = 'TENANT');
+            ALTER TABLE ${database.defaultSchemaName}.permissions
+                ADD CONSTRAINT chk_permissions_tenant_scope CHECK (tenant_id IS NULL OR scope = 'TENANT');
+        </sql>
+    </changeSet>
+
+    <changeSet id="0003-tenant-scoped-rbac-indexes" author="keystone">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="roles"/>
+                <tableExists tableName="permissions"/>
+                <not>
+                    <indexExists indexName="idx_roles_tenant_code"/>
+                </not>
+            </and>
+        </preConditions>
+        <!-- One index per query the code actually runs (see the delivery plan, phase 2):
+             - idx_*_tenant_code: the owner-scoped list (`tenant_id IS NULL OR tenant_id = ? ORDER BY code`)
+             - idx_role_permissions_permission: "roles holding a permission" (permission delete,
+               PermissionResolver's join)
+             - idx_user_roles_tenant: TenantService.delete
+             - idx_users_tenant: UserService.list(tenantId) -->
+        <createIndex tableName="roles" indexName="idx_roles_tenant_code">
+            <column name="tenant_id"/>
+            <column name="code"/>
+        </createIndex>
+        <createIndex tableName="permissions" indexName="idx_permissions_tenant_code">
+            <column name="tenant_id"/>
+            <column name="code"/>
+        </createIndex>
+        <createIndex tableName="role_permissions" indexName="idx_role_permissions_permission">
+            <column name="permission_id"/>
+        </createIndex>
+        <createIndex tableName="user_roles" indexName="idx_user_roles_tenant">
+            <column name="tenant_id"/>
+        </createIndex>
+        <createIndex tableName="users" indexName="idx_users_tenant">
+            <column name="tenant_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

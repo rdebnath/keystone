@@ -411,7 +411,56 @@ broadcast path — there is no self-managed nginx or broker.
   rejected value, `403` denied).
 - **Errors** map through one place (§9): a single `app.exception(...)` handler or shared
   mapper returns RFC 9457 `application/problem+json`; never leak stack traces or SQL.
-- Paginate list endpoints (`page`, `size`, `sort`) and return a typed page wrapper.
+- Paginate list endpoints (`page`, `size`, `sort`) and return a typed page wrapper — the frozen
+  contract is **List endpoints** below, and it applies to every list route on every plane.
+
+### List endpoints (search, filtering & paging)
+
+**Every list route returns a page, never a whole collection**, and every search and filter is applied
+by the **server** (`docs/UX_GUIDELINES.md` §1 explains why: a client that filters the page it holds
+searches only that page).
+
+| Parameter | Type | Default | Rule |
+| --- | --- | --- | --- |
+| `page` | int, `0…10000` | `0` | 0-based; `offset = page × size` |
+| `size` | int, `1…100` | `25` | outside the range → `422` (the cap bounds the work one request can ask for) |
+| `sort` | resource key | resource default | not in the resource's whitelist → `422` naming the allowed keys |
+| `order` | `asc` \| `desc` | `asc` | case-insensitive |
+| `q` | string ≤ 100 chars | absent | case-insensitive *contains* over the resource's documented searchable columns |
+| resource filters | | | e.g. `tenantId`, `scope`, `access`, validated like any other parameter |
+
+```json
+{ "items": [ { "…": "the resource DTO" } ], "page": 0, "size": 25,
+  "totalElements": 142, "totalPages": 6, "hasNext": true, "hasPrevious": false }
+```
+
+Rules:
+
+- **Use the shared vocabulary; do not hand-roll it.** `PageRequest`, `Page`, `SortOrder`,
+  `SearchTerm` and `OptionList` live in `com.chetana.keystone.common.query`; `Search` in
+  `com.chetana.keystone.data`; `QueryParams` in `com.chetana.keystone.web`. A handler reads its
+  parameters in one line; a service builds the `Condition`, counts it, then takes the window
+  (`fetchCount` + `limit`/`offset`) — no generic paging abstraction over jOOQ.
+- **Search is a bound `LIKE` with escaped wildcards** (`Search.containsIgnoreCase`): jOOQ binds the
+  term (no injection) and `%`, `_` and `\` are escaped with an explicit `ESCAPE`, so a user cannot
+  turn a search into a match-everything pattern.
+- **Ordering must be total.** Every sort key gets a tiebreaker (`code`, `username`, `name`, `id`);
+  without one, a row can appear on two pages or on none.
+- **A stale page is not an error**: `page` beyond the last page returns `200` with `"items": []` and
+  the real totals.
+- **The sort whitelist lives in the service**, never in a handler: an unknown key is a `422`, so no
+  caller-supplied text can reach `ORDER BY`.
+- **Paging never widens visibility**: the window is applied to exactly the `WHERE` the unpaged list
+  used — tenant/owner scoping and permission checks first, unchanged — combined with search and
+  filters by `AND`.
+- **Reference data for pickers uses `/options`, never a page.** A dropdown that must show every
+  choice cannot be fed by a paged list, so a resource that has one exposes an unpaged
+  `GET …/options` returning `OptionList<T>` (capped at `OptionList.MAX_OPTIONS`, with `truncated`
+  reported), behind the same read guard as its list route.
+- **A list envelope is a typed record** (§13): never assemble `{"items": …}` from a `Map`, and never
+  return a bare array from one list route and an envelope from another.
+- **Search terms are not loggable PII** (a term may be an email or a username): log the resource and
+  the window, not the term (§10).
 
 ### Realtime (Supabase broadcast)
 
@@ -551,6 +600,9 @@ runtime.
   so a provider adding a field does not break parsing.
 - **`jsonb` columns**: read them through jOOQ's generated record or `into(...)` and map into a
   record — do not leak `JsonNode` out of `persistence`.
+- **List envelopes are records too.** A paged list is `Page<T>` and a picker set is `OptionList<T>`
+  (`com.chetana.keystone.common.query`, §8): the envelope is a typed record with typed items, never a
+  `Map` assembled per handler and never a `JsonNode` reshaped at the edge.
 - **The same shape is mirrored on the client**: the response DTO is the contract the Flutter
   model declares (`docs/CODING_GUIDELINES_FRONTEND.md` §14).
 

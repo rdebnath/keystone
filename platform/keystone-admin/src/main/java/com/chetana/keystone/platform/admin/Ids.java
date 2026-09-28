@@ -20,4 +20,9 @@ public final class Ids {
             throw new ValidationException("Invalid id: " + value);
         }
     }
+
+    /** An absent query parameter means "no filter"; a present one must still parse. */
+    public static UUID optionalUuid(String value) {
+        return value == null || value.isBlank() ? null : uuid(value);
+    }
 }

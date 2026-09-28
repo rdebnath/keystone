@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.chetana.keystone.platform.admin.Ids;
 import com.chetana.keystone.platform.admin.auth.PermissionGuard;
+import com.chetana.keystone.web.QueryParams;
 import com.chetana.keystone.web.RouteConfigurer;
 import io.javalin.config.RoutesConfig;
 
@@ -30,28 +31,29 @@ public final class UserHandler implements RouteConfigurer {
     public void configure(RoutesConfig routes) {
         routes.get("/api/v1/users", ctx -> {
             guard.requireRead(ctx, PLATFORM_USER);
-            String tenantId = ctx.queryParam("tenantId");
-            ctx.json(service.list(tenantId == null ? null : Ids.uuid(tenantId)));
+            UUID tenantId = Ids.optionalUuid(ctx.queryParam("tenantId"));
+            ctx.json(service.list(guard.callerScope(ctx), tenantId, QueryParams.search(ctx),
+                    QueryParams.page(ctx)));
         });
 
         routes.post("/api/v1/users", ctx -> {
             guard.requireWrite(ctx, PLATFORM_USER);
             UserRequest request = ctx.bodyAsClass(UserRequest.class);
-            ctx.status(201).json(service.create(request));
+            ctx.status(201).json(service.create(guard.callerScope(ctx), request));
         });
 
         routes.patch("/api/v1/users/{id}", ctx -> {
             guard.requireWrite(ctx, PLATFORM_USER);
             UUID id = Ids.uuid(ctx.pathParam("id"));
             UserUpdateRequest request = ctx.bodyAsClass(UserUpdateRequest.class);
-            ctx.json(service.update(id, request));
+            ctx.json(service.update(guard.callerScope(ctx), id, request));
         });
 
         routes.put("/api/v1/users/{id}/roles", ctx -> {
             guard.requireWrite(ctx, PLATFORM_USER);
             UUID id = Ids.uuid(ctx.pathParam("id"));
             AssignRolesRequest request = ctx.bodyAsClass(AssignRolesRequest.class);
-            service.assignRoles(id, request);
+            service.assignRoles(guard.callerScope(ctx), id, request);
             ctx.status(204);
         });
 
@@ -62,14 +64,14 @@ public final class UserHandler implements RouteConfigurer {
             guard.requireWrite(ctx, PLATFORM_USER);
             UUID id = Ids.uuid(ctx.pathParam("id"));
             ResetPasswordRequest request = ctx.bodyAsClass(ResetPasswordRequest.class);
-            service.resetPassword(id, request, guard.principal(ctx).subject());
+            service.resetPassword(guard.callerScope(ctx), id, request, guard.principal(ctx).subject());
             ctx.status(204);
         });
 
         routes.delete("/api/v1/users/{id}", ctx -> {
             guard.requireWrite(ctx, PLATFORM_USER);
             UUID id = Ids.uuid(ctx.pathParam("id"));
-            service.delete(id);
+            service.delete(guard.callerScope(ctx), id);
             ctx.status(204);
         });
     }
